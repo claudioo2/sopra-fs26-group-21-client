@@ -42,7 +42,7 @@ reason).
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |**claudioo2**| [29.03.2026]  | https://github.com/claudioo2/sopra-fs26-group-21-client/commit/eafad4641dcb6546cbc4216a44781971b96776fc | Set-up of API and implementation of map| The use of the map to find events is a core concept of the project. Also includes a trial with the google maps API |
 | **semirIbra** | [29.03.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-server/commit/8dabf192ea92a41c237ca41045f1620373505b8b] | [The task was to implement in the server the logic not to show past events on the map. E.g. if I am on the map then I don't want to see an event that ended yeseterday.] | [This is essential for the map interface because if our user is on the map then there should be no past event visible. Furthermore the implementation also makes it possible that only events are shown in the map where the user is currently looking at.] |
-|                    | [29.03.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/7245c76d315ae30b0521824bb2f6b21090fd5619] | [Brief description of the task] | [Why this contribution is relevant] |
+|                    | [29.03.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/7245c76d315ae30b0521824bb2f6b21090fd5619] | [Update the map with events that are present in the area where the user zooms/pans] | [If the user pans/zooms to a different area then the events in that area should be visible. Otherwise it would be a bad user experience if there would be no events showing up eventhough they exist] |
 
 
 ---
