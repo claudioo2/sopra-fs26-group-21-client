@@ -29,19 +29,15 @@ export default function MapPage() {
 
     const createEventMarker = (event: EventDTO, map: mapboxgl.Map) => {
       const markerEl = document.createElement("div");
-      markerEl.style.width = "32px";
-      markerEl.style.height = "32px";
-      markerEl.style.borderRadius = "9999px";
-      markerEl.style.backgroundColor = "#1d4ed8";
-      markerEl.style.border = "2px solid #0f172a";
-      markerEl.style.color = "#ffffff";
-      markerEl.style.display = "flex";
-      markerEl.style.alignItems = "center";
-      markerEl.style.justifyContent = "center";
-      markerEl.style.fontWeight = "700";
-      markerEl.style.fontSize = "14px";
       markerEl.style.cursor = "pointer";
-      markerEl.textContent = "E";
+      markerEl.style.width = "32px";
+      markerEl.style.height = "42px";
+      markerEl.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="32" height="42">
+          <path d="M12 0C7.589 0 4 3.589 4 8c0 5.698 7.199 13.518 7.502 13.855a.665.665 0 0 0 .996 0C12.801 21.518 20 13.698 20 8c0-4.411-3.589-8-8-8z" fill="#c0392b"/>
+          <circle cx="12" cy="8" r="3.5" fill="white"/>
+        </svg>
+      `;
 
       new mapboxgl.Marker(markerEl)
         .setLngLat([event.longitude, event.latitude])
@@ -118,9 +114,9 @@ export default function MapPage() {
   }, [apiService]);
 
   return (
-    <main>
+    <main style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
       <h1>Map</h1>
-      <div ref={mapRef} style={{ width: "100%", height: "500px" }} />
+      <div ref={mapRef} style={{ flex: 1, width: "100%" }} />
     </main>
   );
 }
