@@ -42,7 +42,7 @@ reason).
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **semirIbra** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+| **semirIbra** | [29.03.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-server/commit/8dabf192ea92a41c237ca41045f1620373505b8b] | [The task was to implement in the server the logic not to show past events on the map. E.g. if I am on the map then I don't want to see an event that ended yeseterday.] | [This is essential for the map interface because if our user is on the map then there should be no past event visible. Furthermore the implementation also makes it possible that only events are shown in the map where the user is currently looking at.] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 
 
