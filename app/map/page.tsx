@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Select } from "antd";
+import { Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented } from "antd";
+import { LockOutlined, GlobalOutlined } from "@ant-design/icons"
 
 interface EventFormValues {
   title: string;
@@ -104,17 +105,30 @@ export default function MapPage() {
                 <Input.TextArea placeholder="Brief description" rows={3} />
               </Form.Item>
 
-              <Form.Item
-                label="Privacy"
-                name="privacy"
-                rules={[{ required: true, message: "Privacy is required" }]}
-              >
-                <ConfigProvider theme={{ token: { colorBgContainer: "#16181D", colorText: "#fff", colorTextPlaceholder: "#888888", colorBgElevated: "#16181D", colorIcon: "#fff", colorIconHover: "#aaa" } }}>
-                  <Select placeholder="Select privacy">
-                    <Select.Option value="public">Public</Select.Option>
-                    <Select.Option value="private">Private</Select.Option>
-                  </Select>
+              <Form.Item label="Privacy" name="privacy" initialValue="private">
+                <ConfigProvider theme={{
+                  components: {
+                    Segmented: {
+                      trackBg: "#fff",
+                      itemSelectedBg: "#000",
+                      itemSelectedColor: "#fff",
+                      itemColor: "#000",
+                      itemHoverColor: "#000",
+                      motionDurationSlow: ".15s", // made the duration a little shorter than default to feel more snappy
+                      controlHeight: 40,
+                    }
+                  }
+                }}>
+                  <Segmented
+                    style={{ caretColor: "transparent" }} // made the carret invisible, because it looked bad
+                    options={[
+                      { label: <span><LockOutlined /> Private</span>, value: "private" },
+                      { label: <span><GlobalOutlined /> Public</span>, value: "public" },
+                    ]}
+                    block
+                  />
                 </ConfigProvider>
+
               </Form.Item>
 
               <Form.Item style={{ marginBottom: 0 }}>
