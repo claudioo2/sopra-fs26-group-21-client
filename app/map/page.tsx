@@ -10,17 +10,9 @@ const DEFAULT_CENTER: [number, number] = [13.405, 52.52]; // Berlin fallback
 export default function MapPage() {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
   const apiService = useApi();
 
-  /**
-   * ISSUE: "The map updates to show new events when a user pans to a different geographical area"
-   *
-   * Implementation:
-   * - Listens to `moveend` event on Mapbox map
-   * - Fetches events based on new map center
-   * - Clears old markers and renders new ones
-   */
+  const markersRef = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
     const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -33,13 +25,8 @@ export default function MapPage() {
     if (!mapRef.current) return;
 
     mapboxgl.accessToken = accessToken;
-    const token = localStorage.getItem("token") ?? "";
 
-    // clear the marker if its not visible on the map when zooming or panning
-    const clearMarkers = () => {
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-    };
+    const token = localStorage.getItem("token") ?? "";
 
     const createEventMarker = (event: EventDTO, map: mapboxgl.Map) => {
       const markerEl = document.createElement("div");
@@ -73,19 +60,21 @@ export default function MapPage() {
       markersRef.current.push(marker);
     };
 
-    const fetchAndDisplayEvents = async (
-      map: mapboxgl.Map,
-      center: [number, number]
-    ) => {
-      clearMarkers(); // clear old markers before adding new ones
-
+    const fetchAndDisplayEvents = async (map: mapboxgl.Map, center: [number, number]) => {
       try {
         const [lng, lat] = center;
 
         const events = await apiService.get<EventDTO[]>(
           `/events?longitude=${lng}&latitude=${lat}&radius=20`,
-          {headers: {Authorization: `${token}`}}
+          {
+            headers: {
+              Authorization: `${token}`,
+            },
+          }
         );
+
+        markersRef.current.forEach((m) => m.remove());
+        markersRef.current = [];
 
         events.forEach((event) => {
           if (!event.isPrivate) {
@@ -121,7 +110,7 @@ export default function MapPage() {
         fetchAndDisplayEvents(map, center);
       });
 
-      // update the events on the map when the user pans or zooms
+      // Fetch new events when the user stops moving the map
       map.on("moveend", () => {
         const c = map.getCenter();
         fetchAndDisplayEvents(map, [c.lng, c.lat]);
