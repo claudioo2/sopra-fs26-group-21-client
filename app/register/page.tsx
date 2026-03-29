@@ -83,7 +83,7 @@ const Login: React.FC = () => {
         </Form.Item>
 
         <Button type="link" onClick={() => router.push("/login")} style={{ color: "gray" }}>
-        Don't have an account? Login here.
+        {"Don't have an account? Login here."}
       </Button>
 
       </Form>

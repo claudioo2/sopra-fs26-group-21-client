@@ -79,7 +79,7 @@ const Login: React.FC = () => {
         </Form.Item>
 
         <Button type="link" onClick={() => router.push("/register")} style={{ color: "gray" }}>
-        Don't have an account? Register here.
+        {"Don't have an account? Register here."}
       </Button>
       </Form>
 
