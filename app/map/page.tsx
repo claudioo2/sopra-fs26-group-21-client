@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useApi } from "@/hooks/useApi";
 import { EventDTO } from "@/types/event";
