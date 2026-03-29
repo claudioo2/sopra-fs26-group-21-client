@@ -36,7 +36,7 @@ reason).
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
 | **GabrielVuattoux** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+| **fra-a11y** | [29.03.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/dfaeeef0b9a34c6dfe3844eb84ca7b57213afbc0#diff-562367831912b009c4b6f4ede8ef3cd641a0a3246e77ebb7da411b6162591de4] | [Asking the user to allow the geolocation, to center the map based on his location] | [The MAP use to land on the city of Berlin, making it difficult to navigate through local events] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
