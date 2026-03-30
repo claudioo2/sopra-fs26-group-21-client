@@ -19,7 +19,7 @@ Deployed on **Vercel** · Connects to the Spring Boot backend on port `8080`.
 ## Installation
 
 ```bash
-git clone https://github.com/<your-org>/sopra-fs26-group-21-client
+git clone https://github.com/claudioo2/sopra-fs26-group-21-client
 cd sopra-fs26-group-21-client
 source setup.sh   # installs Nix, direnv, Node, and Deno
 ```
