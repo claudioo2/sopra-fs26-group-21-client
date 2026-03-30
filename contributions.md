@@ -34,8 +34,8 @@ reason).
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
-| **GabrielVuattoux** | 26.03.26   | https://github.com/claudioo2/sopra-fs26-group-21-client/commit/8aec5d780a5e82506b3021240975bec44125daa8 | Add Event + Creation Form | Start of the begining of the collaboration task of the project|
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **GabrielVuattoux** | 27.03.26   | https://github.com/claudioo2/sopra-fs26-group-21-client/commit/8aec5d780a5e82506b3021240975bec44125daa8 | Add Event + Creation Form | Start of the begining of the collaboration task of the project|
+|                    | 27.03.26   | (https://github.com/claudioo2/sopra-fs26-group-21-client/commit/6c558b88c3a6bff18d8c958241a3bf8c8cca2493) | actualisation of the ReadMe Files for the back and front end | Nice to have a good organisation |
 | **fra-a11y** | [29.03.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/dfaeeef0b9a34c6dfe3844eb84ca7b57213afbc0#diff-562367831912b009c4b6f4ede8ef3cd641a0a3246e77ebb7da411b6162591de4] | [Asking the user to allow the geolocation, to center the map based on his location] | [The MAP use to land on the city of Berlin, making it difficult to navigate through local events] |
 |                    | [29.03.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/adac2aba3802be7ca451c51c94abd40c983d4d38] | [Adjusting map size and polishing marker looks ] | [The map was covering only half of the screen, and the marker where not meeting the UI expectations] |
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
