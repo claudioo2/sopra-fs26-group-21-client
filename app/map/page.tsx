@@ -213,57 +213,54 @@ export default function MapPage() {
               </Button>
             </div>
 
-            <Form form={form} layout="vertical" onFinish={handleSubmit}>
-              <Form.Item
-                label="Title"
-                name="title"
-                rules={[{ required: true, message: "Title is required" }]}
-              >
-                <Input placeholder="Event title" />
-              </Form.Item>
+            <ConfigProvider theme={{
+              token: { colorBgContainer: "#16181D", colorText: "#fff", colorTextPlaceholder: "#888888", colorBgElevated: "#16181D", colorIcon: "#fff", colorIconHover: "#aaa", colorTextHeading: "#fff", colorTextDisabled: "#555" },
+              components: {
+                Segmented: {
+                  trackBg: "#fff",
+                  itemSelectedBg: "#000",
+                  itemSelectedColor: "#fff",
+                  itemColor: "#000",
+                  itemHoverColor: "#000",
+                  motionDurationSlow: ".15s",
+                  controlHeight: 40,
+                }
+              }
+            }}>
+              <Form form={form} layout="vertical" onFinish={handleSubmit}>
+                <Form.Item
+                  label="Title"
+                  name="title"
+                  rules={[{ required: true, message: "Title is required" }]}
+                >
+                  <Input placeholder="Event title" />
+                </Form.Item>
 
-              <Form.Item
-                label="Date"
-                name="date"
-                rules={[{ required: true, message: "Date is required" }]}
-              >
-                <ConfigProvider theme={{ token: { colorBgContainer: "#16181D", colorText: "#fff", colorTextPlaceholder: "#888888", colorBgElevated: "#16181D", colorIcon: "#fff", colorIconHover: "#aaa", colorTextHeading: "#fff", colorTextDisabled: "#555" } }}>
+                <Form.Item
+                  label="Date"
+                  name="date"
+                  rules={[{ required: true, message: "Date is required" }]}
+                >
                   <DatePicker style={{ width: "100%" }} />
-                </ConfigProvider>
-              </Form.Item>
+                </Form.Item>
 
-              <Form.Item
-                label="Time"
-                name="time"
-                rules={[{ required: true, message: "Time is required" }]}
-              >
-                <ConfigProvider theme={{ token: { colorBgContainer: "#16181D", colorText: "#fff", colorTextPlaceholder: "#888888", colorBgElevated: "#16181D", colorIcon: "#fff", colorIconHover: "#aaa", colorTextHeading: "#fff", colorTextDisabled: "#555" } }}>
+                <Form.Item
+                  label="Time"
+                  name="time"
+                  rules={[{ required: true, message: "Time is required" }]}
+                >
                   <TimePicker style={{ width: "100%" }} format="HH:mm" />
-                </ConfigProvider>
-              </Form.Item>
+                </Form.Item>
 
-              <Form.Item
-                label="Description"
-                name="description"
-                rules={[{ required: true, message: "Description is required" }]}
-              >
-                <Input.TextArea placeholder="Brief description" rows={3} />
-              </Form.Item>
+                <Form.Item
+                  label="Description"
+                  name="description"
+                  rules={[{ required: true, message: "Description is required" }]}
+                >
+                  <Input.TextArea placeholder="Brief description" rows={3} />
+                </Form.Item>
 
-              <Form.Item label="Privacy" name="privacy" initialValue="private">
-                <ConfigProvider theme={{
-                  components: {
-                    Segmented: {
-                      trackBg: "#fff",
-                      itemSelectedBg: "#000",
-                      itemSelectedColor: "#fff",
-                      itemColor: "#000",
-                      itemHoverColor: "#000",
-                      motionDurationSlow: ".15s",
-                      controlHeight: 40,
-                    }
-                  }
-                }}>
+                <Form.Item label="Privacy" name="privacy" initialValue="private">
                   <Segmented
                     style={{ caretColor: "transparent" }}
                     options={[
@@ -272,15 +269,15 @@ export default function MapPage() {
                     ]}
                     block
                   />
-                </ConfigProvider>
-              </Form.Item>
+                </Form.Item>
 
-              <Form.Item style={{ marginBottom: 0 }}>
-                <Button type="primary" htmlType="submit" block>
-                  Create
-                </Button>
-              </Form.Item>
-            </Form>
+                <Form.Item style={{ marginBottom: 0 }}>
+                  <Button type="primary" htmlType="submit" block>
+                    Create
+                  </Button>
+                </Form.Item>
+              </Form>
+            </ConfigProvider>
           </div>
         )}
       </div>

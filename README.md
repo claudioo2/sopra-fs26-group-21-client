@@ -1,7 +1,7 @@
 # SoPra FS26 – Group 21 · Frontend
 
 Next.js 15 / TypeScript client for the SoPra FS26 Group 21 project.
-Deployed on **Vercel** · Connects to the Spring Boot backend on port `8080`.
+Deployed on **Vercel** · The app runs on `http://localhost:3000` in development and connects to the Spring Boot backend at `http://localhost:8080`.
 
 ---
 
