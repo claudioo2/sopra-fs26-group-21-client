@@ -4,16 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented } from "antd";
+import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented } from "antd";
 import { LockOutlined, GlobalOutlined } from "@ant-design/icons";
+import type { Dayjs } from "dayjs";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { EventDTO } from "@/types/event";
 
 interface EventFormValues {
   title: string;
-  date: string;
-  time: string;
+  startDate: Dayjs;
+  startTime: Dayjs;
+  endDate: Dayjs;
+  endTime: Dayjs;
   description: string;
   privacy: "public" | "private";
 }
@@ -26,8 +29,13 @@ export default function MapPage() {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const mapCenterRef = useRef<[number, number]>(DEFAULT_CENTER);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
+  const [addressQuery, setAddressQuery] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
   const [form] = Form.useForm();
+  const { message: messageApi } = App.useApp();
 
   const { value: token, clear: clearToken } = useLocalStorage<string>("token", "");
   const [isMounted, setIsMounted] = useState(false);
@@ -137,11 +145,14 @@ export default function MapPage() {
       );
 
       map.on("load", () => {
+        mapCenterRef.current = center;
         fetchAndDisplayEvents(map, center);
       });
 
       map.on("moveend", () => {
         const c = map.getCenter();
+        mapCenterRef.current = [c.lng, c.lat];
+        setSelectedLocation([c.lng, c.lat]);
         fetchAndDisplayEvents(map, [c.lng, c.lat]);
       });
     };
@@ -164,16 +175,97 @@ export default function MapPage() {
     };
   }, [isMounted, token, apiService]);
 
+  // Address geocoding with 500ms debounce
+  useEffect(() => {
+    if (!addressQuery.trim() || addressQuery.length < 3) {
+      setAddressSuggestions([]);
+      return;
+    }
+    const accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+    if (!accessToken) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(addressQuery)}.json?access_token=${accessToken}&limit=4`
+        );
+        const data = await res.json();
+        setAddressSuggestions(
+          data.features.map((f: { place_name: string; center: [number, number] }) => ({
+            place_name: f.place_name,
+            center: f.center,
+          }))
+        );
+      } catch (err) {
+        console.error("Geocoding error:", err);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [addressQuery]);
+
+  const openPanel = () => {
+    setSelectedLocation(mapCenterRef.current);
+    setPanelOpen(true);
+  };
+
+  const closePanel = () => {
+    setSelectedLocation(null);
+    setAddressQuery("");
+    setAddressSuggestions([]);
+    form.resetFields();
+    setPanelOpen(false);
+  };
+
+  const selectSuggestion = (center: [number, number], placeName: string) => {
+    setAddressQuery(placeName);
+    setAddressSuggestions([]);
+    mapInstanceRef.current?.flyTo({ center, zoom: 14 });
+    // selectedLocation will update via moveend after flyTo completes
+  };
+
   const handleLogout = () => {
     setIsMounted(false);
     clearToken();
     router.push("/login");
   };
 
-  const handleSubmit = (values: EventFormValues) => {
-    console.log("New event:", values);
-    form.resetFields();
-    setPanelOpen(false);
+  const handleSubmit = async (values: EventFormValues) => {
+    const startDayjs = values.startDate
+      .hour(values.startTime.hour())
+      .minute(values.startTime.minute())
+      .second(0);
+
+    const endDayjs = values.endDate
+      .hour(values.endTime.hour())
+      .minute(values.endTime.minute())
+      .second(0);
+
+    if (!endDayjs.isAfter(startDayjs)) {
+      messageApi.error("End time must be after start time.");
+      return;
+    }
+
+    const [lng, lat] = selectedLocation ?? mapCenterRef.current;
+
+    const payload = {
+      title: values.title,
+      description: values.description,
+      startTime: startDayjs.format("YYYY-MM-DDTHH:mm:ss"),
+      endTime: endDayjs.format("YYYY-MM-DDTHH:mm:ss"),
+      longitude: lng,
+      latitude: lat,
+      isPrivate: values.privacy === "private",
+    };
+
+    try {
+      await apiService.post<EventDTO>("/events", payload, { Authorization: `Bearer ${token}` });
+      closePanel();
+      mapInstanceRef.current?.fire("moveend");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to create event. Please try again.";
+      messageApi.error(msg);
+    }
   };
 
   if (!token) return null;
@@ -182,7 +274,7 @@ export default function MapPage() {
     <main style={{ position: "relative", height: "100vh", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px" }}>
         <h1 style={{ margin: 0 }}>Map</h1>
-        <Button type="primary" onClick={() => setPanelOpen(true)}>
+        <Button type="primary" onClick={openPanel}>
           + Create Event
         </Button>
         <Button onClick={handleLogout} style={{ marginLeft: "auto" }}>
@@ -191,7 +283,21 @@ export default function MapPage() {
       </div>
 
       <div style={{ flex: 1, display: "flex", position: "relative" }}>
-        <div ref={mapRef} style={{ flex: 1 }} />
+        <div style={{ flex: 1, position: "relative" }}>
+          <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
+          {panelOpen && (
+            <div style={{
+              position: "absolute", left: "50%", top: "50%",
+              transform: "translate(-50%, -100%)",
+              pointerEvents: "none", zIndex: 1,
+            }}>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="40" height="54">
+                <path d="M12 0C7.589 0 4 3.589 4 8c0 5.698 7.199 13.518 7.502 13.855a.665.665 0 0 0 .996 0C12.801 21.518 20 13.698 20 8c0-4.411-3.589-8-8-8z" fill="#22c55e"/>
+                <circle cx="12" cy="8" r="3.5" fill="white"/>
+              </svg>
+            </div>
+          )}
+        </div>
 
         {panelOpen && (
           <div
@@ -208,9 +314,46 @@ export default function MapPage() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <h2 style={{ margin: 0, fontSize: "18px" }}>Create Event</h2>
-              <Button type="text" onClick={() => setPanelOpen(false)} style={{ fontSize: "18px", lineHeight: 1 }}>
+              <Button type="text" onClick={closePanel} style={{ fontSize: "18px", lineHeight: 1 }}>
                 ×
               </Button>
+            </div>
+
+            {/* Address search */}
+            <div style={{ marginBottom: "16px", position: "relative" }}>
+              <p style={{ color: "#aaa", fontSize: "12px", margin: "0 0 6px 0" }}>
+                Pan the map to position the green pin on your desired location, or search an address below.
+              </p>
+              <Input
+                placeholder="Search address (optional)"
+                value={addressQuery}
+                onChange={(e) => setAddressQuery(e.target.value)}
+                style={{ backgroundColor: "#23262d", borderColor: "#444", color: "#fff" }}
+              />
+              {addressSuggestions.length > 0 && (
+                <div style={{
+                  position: "absolute", zIndex: 10, width: "100%",
+                  backgroundColor: "#23262d", border: "1px solid #444",
+                  borderRadius: "6px", marginTop: "4px", overflow: "hidden",
+                }}>
+                  {addressSuggestions.map((s) => (
+                    <div
+                      key={s.place_name}
+                      onClick={() => selectSuggestion(s.center, s.place_name)}
+                      style={{ padding: "8px 12px", cursor: "pointer", color: "#fff", fontSize: "13px", borderBottom: "1px solid #333" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#2e3138")}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                    >
+                      {s.place_name}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedLocation && (
+                <p style={{ color: "#666", fontSize: "11px", margin: "4px 0 0 0" }}>
+                  📍 {selectedLocation[1].toFixed(5)}, {selectedLocation[0].toFixed(5)}
+                </p>
+              )}
             </div>
 
             <ConfigProvider theme={{
@@ -237,17 +380,33 @@ export default function MapPage() {
                 </Form.Item>
 
                 <Form.Item
-                  label="Date"
-                  name="date"
-                  rules={[{ required: true, message: "Date is required" }]}
+                  label="Start Date"
+                  name="startDate"
+                  rules={[{ required: true, message: "Start date is required" }]}
                 >
                   <DatePicker style={{ width: "100%" }} />
                 </Form.Item>
 
                 <Form.Item
-                  label="Time"
-                  name="time"
-                  rules={[{ required: true, message: "Time is required" }]}
+                  label="Start Time"
+                  name="startTime"
+                  rules={[{ required: true, message: "Start time is required" }]}
+                >
+                  <TimePicker style={{ width: "100%" }} format="HH:mm" />
+                </Form.Item>
+
+                <Form.Item
+                  label="End Date"
+                  name="endDate"
+                  rules={[{ required: true, message: "End date is required" }]}
+                >
+                  <DatePicker style={{ width: "100%" }} />
+                </Form.Item>
+
+                <Form.Item
+                  label="End Time"
+                  name="endTime"
+                  rules={[{ required: true, message: "End time is required" }]}
                 >
                   <TimePicker style={{ width: "100%" }} format="HH:mm" />
                 </Form.Item>
