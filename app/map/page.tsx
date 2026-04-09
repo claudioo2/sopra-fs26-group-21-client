@@ -39,6 +39,7 @@ export default function MapPage() {
   const { message: messageApi } = App.useApp();
 
   const { value: token, clear: clearToken } = useLocalStorage<string>("token", "");
+  const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");
   const [isMounted, setIsMounted] = useState(false);
 
   // Auth guard — delays check by one render to avoid SSR/localStorage issues
@@ -223,6 +224,7 @@ export default function MapPage() {
   const handleLogout = () => {
     setIsMounted(false);
     clearToken();
+    clearUserId();
     router.push("/login");
   };
 
@@ -469,6 +471,14 @@ export default function MapPage() {
                 <span style={{ color: "#6b7280", fontSize: "12px" }}>Participants</span>
                 <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.participantCount ?? 0}</p>
               </div>
+            </div>
+            <div>
+              {Number(userId) == selectedEvent.creatorId && (
+                <div>
+                  <span style={{ color: "#6b7280", fontSize: "12px" }}>Your Invite Code - visible to event creators only</span>
+                  <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.inviteCode ?? "—"}</p>
+                </div>
+              )}
             </div>
             <div>
               <span style={{ color: "#6b7280", fontSize: "12px" }}>Photos</span>
