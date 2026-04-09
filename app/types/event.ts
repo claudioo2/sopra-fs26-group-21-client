@@ -7,6 +7,7 @@ export interface EventDTO {
   latitude: number;
   longitude: number;
   isPrivate: boolean;
+  inviteCode: string | null;
   creatorId: number | null;
   creatorUsername: string | null;
   participantCount: number | null;
