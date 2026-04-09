@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented } from "antd";
+import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal } from "antd";
 import { LockOutlined, GlobalOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { useApi } from "@/hooks/useApi";
@@ -31,6 +31,7 @@ export default function MapPage() {
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const mapCenterRef = useRef<[number, number]>(DEFAULT_CENTER);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
   const [addressQuery, setAddressQuery] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
@@ -87,17 +88,12 @@ export default function MapPage() {
         </svg>
       `;
 
+      markerEl.addEventListener("click", () => {
+        setSelectedEvent(event);
+      });
+
       const marker = new mapboxgl.Marker(markerEl)
         .setLngLat([event.longitude, event.latitude])
-        .setPopup(
-          new mapboxgl.Popup({ offset: 25 }).setHTML(`
-            <h3 style="color:#0f172a;margin:0 0 4px 0">${event.title}</h3>
-            <p style="color:#374151;margin:0 0 4px 0">${event.description ?? ""}</p>
-            <p style="color:#6b7280;margin:0;font-size:12px">
-              Starts: ${new Date(event.startTime).toLocaleString()}
-            </p>
-          `)
-        )
         .addTo(map);
 
       markersRef.current.push(marker);
@@ -440,6 +436,60 @@ export default function MapPage() {
           </div>
         )}
       </div>
+
+      <Modal
+        open={selectedEvent !== null}
+        onCancel={() => setSelectedEvent(null)}
+        footer={null}
+        title={selectedEvent?.title}
+        width={480}
+      >
+        {selectedEvent && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            <div>
+              <span style={{ color: "#6b7280", fontSize: "12px" }}>Description</span>
+              <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.description ?? "—"}</p>
+            </div>
+            <div style={{ display: "flex", gap: "24px" }}>
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>Start</span>
+                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.startTime).toLocaleString()}</p>
+              </div>
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>End</span>
+                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.endTime).toLocaleString()}</p>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "24px" }}>
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>Organizer</span>
+                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.creatorUsername ?? "—"}</p>
+              </div>
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>Participants</span>
+                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.participantCount ?? 0}</p>
+              </div>
+            </div>
+            <div>
+              <span style={{ color: "#6b7280", fontSize: "12px" }}>Photos</span>
+              {selectedEvent.pictureUrls && selectedEvent.pictureUrls.length > 0 ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "6px" }}>
+                  {selectedEvent.pictureUrls.map((url, i) => (
+                    <img
+                      key={i}
+                      src={url}
+                      alt={`Event photo ${i + 1}`}
+                      style={{ width: "120px", height: "80px", objectFit: "cover", borderRadius: "6px" }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p style={{ margin: "2px 0 0 0", color: "#9ca3af" }}>No photos available</p>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
     </main>
   );
 }

@@ -8,5 +8,7 @@ export interface EventDTO {
   longitude: number;
   isPrivate: boolean;
   creatorId: number | null;
+  creatorUsername: string | null;
   participantCount: number | null;
+  pictureUrls: string[] | null;
 }
