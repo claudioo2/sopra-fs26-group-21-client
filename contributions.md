@@ -47,13 +47,13 @@ reason).
 
 ---
 
-## Contributions Week 2 - 30.03.2026 to 05.04.2026
+## Contributions Week 2 - 30.03.2026 to 12.04.2026
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
 | **GabrielVuattoux** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+| **fra-a11y** | [10.04.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-server/commit/f14ada4463843ec65387258d6af035e6a1fb8bf8] | [Private events are saved to the database but are never fetched or displayed on the map for non-participants. Backend filters events in getEventsInRadius — public events show to everyone, private events show only to participants] | [When someone creates a private event, it should only be visible on the map to people who were invited/joined] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **claudioo2** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
