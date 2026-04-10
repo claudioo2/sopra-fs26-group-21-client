@@ -59,8 +59,8 @@ reason).
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **semirIbra** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **semirIbra** | [09.04.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/fb80b99c3a27b88a492710c792f810ca917353b2, (backend part: https://github.com/claudioo2/sopra-fs26-group-21-server/commit/bbd8505fcd3b66cbac95c9a13aea147d0703f661)] | [Upon creation, the creator of an event should receive a unique, shareable code to invite others (which is found when clicking on the event). This code is only visible to the creator of the event and not to non-creators] | [This code is later used for users that are not creators of an event and they should be able to join with that code. This is especially relevant to private events that cannot be found on the map because they require this code from the event creator to join private events (so that people that do not have that code cannot join)] |
+|                    | [10.04.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-server/commit/1383d53ffb2879b1f919d77c362224ba5ac8a539] | [Make the backend work for the client such that when a user joins successfully an event it adds the event's participant list in the database adds the user. To make this work, a RESTApi needs to be implemented for this functionality.] | [This is relevant later for the client repo to make the join functionality work. The RESTApi can be used to do a join request when users want to participate in an event] |
 
 ---
 
