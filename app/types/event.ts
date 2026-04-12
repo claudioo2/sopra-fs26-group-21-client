@@ -11,5 +11,6 @@ export interface EventDTO {
   creatorId: number | null;
   creatorUsername: string | null;
   participantCount: number | null;
+  participantIds: number[] | null;
   pictureUrls: string[] | null;
 }
