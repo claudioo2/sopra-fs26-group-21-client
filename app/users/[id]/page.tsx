@@ -20,11 +20,16 @@ const Profile: React.FC = () => {
 
   const [user, setUser] = useState<User | null>(null);
   const [editing, setEditing] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [form] = Form.useForm();
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
 
   useEffect(() => {
+    if (!isMounted) {
+      setIsMounted(true);
+      return;
+    }
     if (!token) {
       router.push("/login");
       return;
@@ -43,7 +48,7 @@ const Profile: React.FC = () => {
       }
     };
     fetchUser();
-  }, [apiService, profileId, token, router]);
+  }, [apiService, profileId, token, router, isMounted]);
 
   const handleEdit = () => {
     form.setFieldsValue({ username: user?.username, bio: user?.bio ?? "" });

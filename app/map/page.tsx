@@ -406,7 +406,10 @@ export default function MapPage() {
         <Button type="primary" onClick={openPanel}>
           + Create Event
         </Button>
-        <Button onClick={handleLogout} style={{ marginLeft: "auto" }}>
+        <Button onClick={() => router.push(`/users/${userId}`)} style={{ marginLeft: "auto" }}>
+          Mon profil
+        </Button>
+        <Button onClick={handleLogout}>
           Logout
         </Button>
       </div>
