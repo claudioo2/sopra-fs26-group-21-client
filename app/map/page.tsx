@@ -8,7 +8,6 @@ import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segme
 import { LockOutlined, GlobalOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
-import SockJS from "sockjs-client";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { EventDTO } from "@/types/event";
@@ -53,6 +52,7 @@ export default function MapPage() {
 
   const [joiningEvent, setJoiningEvent] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [stompConnected, setStompConnected] = useState(false);
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const [chatInput, setChatInput] = useState("");
 
@@ -62,6 +62,15 @@ export default function MapPage() {
   const { value: token, clear: clearToken } = useLocalStorage<string>("token", "");
   const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");
   const [isMounted, setIsMounted] = useState(false);
+
+  // Resize the map after any panel opens or closes.
+  // useEffect fires after React commits the DOM change, so the map div already
+  // has its new dimensions when resize() is called.
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      mapInstanceRef.current?.resize();
+    });
+  }, [panelOpen, chatOpen]);
 
   // Auto-scroll to bottom when new chat messages arrive
   useEffect(() => {
@@ -290,16 +299,22 @@ export default function MapPage() {
     }
 
     // Connect via WebSocket (STOMP over SockJS)
+    const wsUrl = getApiDomain().replace(/^http/, "ws") + "/ws";
     const client = new Client({
-      webSocketFactory: () => new SockJS(`${getApiDomain()}/ws`),
+      brokerURL: wsUrl,
       onConnect: () => {
+        setStompConnected(true);
         client.subscribe(`/topic/chat/${event.id}`, (frame) => {
           const msg: Message = JSON.parse(frame.body);
           setChatMessages((prev) => [...prev, msg]);
         });
       },
+      onDisconnect: () => {
+        setStompConnected(false);
+      },
       onStompError: (frame) => {
         console.error("STOMP error:", frame);
+        setStompConnected(false);
       },
     });
     client.activate();
@@ -312,13 +327,14 @@ export default function MapPage() {
     stompClientRef.current = null;
     chatEventRef.current = null;
     setChatOpen(false);
+    setStompConnected(false);
     setChatMessages([]);
     setChatInput("");
   };
 
   const handleSendMessage = () => {
     const text = chatInput.trim();
-    if (!text || !stompClientRef.current?.connected || !chatEventRef.current) return;
+    if (!text || !stompConnected || !stompClientRef.current || !chatEventRef.current) return;
     stompClientRef.current.publish({
       destination: `/app/chat/${chatEventRef.current.id}`,
       body: JSON.stringify({
@@ -346,7 +362,18 @@ export default function MapPage() {
       return;
     }
 
-    const [lng, lat] = selectedLocation ?? mapCenterRef.current;
+    // Read the exact coordinate under the green pin tip at submit time.
+    // The pin tip is at (50%, 50%) of the map div after the transform fix,
+    // so unproject([w/2, h/2]) gives the correct geographic coordinate.
+    let lng: number, lat: number;
+    if (mapRef.current && mapInstanceRef.current) {
+      const { width, height } = mapRef.current.getBoundingClientRect();
+      const lngLat = mapInstanceRef.current.unproject([width / 2, height / 2]);
+      lng = lngLat.lng;
+      lat = lngLat.lat;
+    } else {
+      [lng, lat] = selectedLocation ?? mapCenterRef.current;
+    }
 
     const payload = {
       title: values.title,
@@ -492,9 +519,9 @@ export default function MapPage() {
               <Button
                 type="primary"
                 onClick={handleSendMessage}
-                disabled={!chatInput.trim()}
+                disabled={!chatInput.trim() || !stompConnected}
               >
-                Send
+                {stompConnected ? "Send" : "Connecting…"}
               </Button>
             </div>
           </div>
@@ -506,7 +533,7 @@ export default function MapPage() {
           {panelOpen && (
             <div style={{
               position: "absolute", left: "50%", top: "50%",
-              transform: "translate(-50%, -100%)",
+              transform: "translate(-20px, -37px)",
               pointerEvents: "none", zIndex: 1,
             }}>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="40" height="54">
