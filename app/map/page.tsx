@@ -12,6 +12,7 @@ import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { EventDTO } from "@/types/event";
 import { getApiDomain } from "@/utils/domain";
+import { Color } from "antd/es/color-picker";
 
 interface EventFormValues {
   title: string;
@@ -395,6 +396,24 @@ export default function MapPage() {
     }
   };
 
+  const handleJoinByInviteCode = async (e:any) => {
+    e.preventDefault();
+    const inviteCode = e.target.elements.inviteCode.value;
+    if (!inviteCode) {
+      messageApi.error("Please enter an invite code.");
+      return;
+    }
+    try {
+      await apiService.post("/events/participants", { inviteCode, userId: Number(userId) }, { Authorization: `Bearer ${token}` });
+      messageApi.success("You joined the event!");
+      router.push("/map");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to join event. Please check the invite code and try again.";
+      messageApi.error(msg);
+    }
+  };
+
+
   if (!token) return null;
 
   const isCreator = selectedEvent !== null && Number(userId) === selectedEvent.creatorId;
@@ -406,6 +425,18 @@ export default function MapPage() {
         <Button type="primary" onClick={openPanel}>
           + Create Event
         </Button>
+        <form onSubmit={handleJoinByInviteCode} style={{ display: "flex", gap: "8px" , color: "#fff"}}>
+          <input
+            name="inviteCode"
+            type="text"
+            placeholder="Enter event invite code"
+            style={{ fontSize: "18px"}}
+          />
+
+          <button type="submit" style={{ backgroundColor: "#1890ff", color: "#fff", border: "none", padding: "10px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "15px"}}>
+            Join Event
+          </button>
+        </form>
         <Button onClick={() => router.push(`/users/${userId}`)} style={{ marginLeft: "auto" }}>
           Mon profil
         </Button>
