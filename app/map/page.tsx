@@ -148,7 +148,7 @@ export default function MapPage() {
         markersRef.current = [];
 
         events.forEach((event) => {
-          if (!event.isPrivate) {
+          if (!event.isPrivate || event.participantIds?.includes(Number(userId))) {
             createEventMarker(event, map);
           }
         });
