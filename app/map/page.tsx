@@ -7,9 +7,12 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal } from "antd";
 import { LockOutlined, GlobalOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { EventDTO } from "@/types/event";
+import { getApiDomain } from "@/utils/domain";
 
 interface EventFormValues {
   title: string;
@@ -21,6 +24,14 @@ interface EventFormValues {
   privacy: "public" | "private";
 }
 
+interface Message {
+  id: number;
+  content: string;
+  senderUsername: string;
+  timestamp: string;
+  eventId: number;
+}
+
 const DEFAULT_CENTER: [number, number] = [13.405, 52.52]; // Berlin fallback
 
 export default function MapPage() {
@@ -30,17 +41,32 @@ export default function MapPage() {
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<mapboxgl.Marker[]>([]);
   const mapCenterRef = useRef<[number, number]>(DEFAULT_CENTER);
+  const stompClientRef = useRef<Client | null>(null);
+  const chatEventRef = useRef<EventDTO | null>(null);
+  const chatBottomRef = useRef<HTMLDivElement | null>(null);
+
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
   const [addressQuery, setAddressQuery] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
+
+  const [joiningEvent, setJoiningEvent] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Message[]>([]);
+  const [chatInput, setChatInput] = useState("");
+
   const [form] = Form.useForm();
   const { message: messageApi } = App.useApp();
 
   const { value: token, clear: clearToken } = useLocalStorage<string>("token", "");
   const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");
   const [isMounted, setIsMounted] = useState(false);
+
+  // Auto-scroll to bottom when new chat messages arrive
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
 
   // Auth guard — delays check by one render to avoid SSR/localStorage issues
   useEffect(() => {
@@ -218,14 +244,90 @@ export default function MapPage() {
     setAddressQuery(placeName);
     setAddressSuggestions([]);
     mapInstanceRef.current?.flyTo({ center, zoom: 14 });
-    // selectedLocation will update via moveend after flyTo completes
   };
 
   const handleLogout = () => {
+    stompClientRef.current?.deactivate();
     setIsMounted(false);
     clearToken();
     clearUserId();
     router.push("/login");
+  };
+
+  const handleJoinEvent = async () => {
+    if (!selectedEvent) return;
+    setJoiningEvent(true);
+    try {
+      const updated = await apiService.post<EventDTO>(
+        `/events/${selectedEvent.id}/participants`,
+        { userId: Number(userId) },
+        { Authorization: `Bearer ${token}` }
+      );
+      setSelectedEvent({ ...updated, isParticipant: true });
+      messageApi.success("You joined the event!");
+      mapInstanceRef.current?.fire("moveend");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to join event";
+      messageApi.error(msg);
+    } finally {
+      setJoiningEvent(false);
+    }
+  };
+
+  const handleOpenChat = async (event: EventDTO) => {
+    chatEventRef.current = event;
+    setSelectedEvent(null);
+
+    // Load chat history
+    try {
+      const history = await apiService.get<Message[]>(
+        `/events/${event.id}/messages`,
+        { Authorization: `Bearer ${token}` }
+      );
+      setChatMessages(history);
+    } catch {
+      setChatMessages([]);
+    }
+
+    // Connect via WebSocket (STOMP over SockJS)
+    const client = new Client({
+      webSocketFactory: () => new SockJS(`${getApiDomain()}/ws`),
+      onConnect: () => {
+        client.subscribe(`/topic/chat/${event.id}`, (frame) => {
+          const msg: Message = JSON.parse(frame.body);
+          setChatMessages((prev) => [...prev, msg]);
+        });
+      },
+      onStompError: (frame) => {
+        console.error("STOMP error:", frame);
+      },
+    });
+    client.activate();
+    stompClientRef.current = client;
+    setChatOpen(true);
+  };
+
+  const handleCloseChat = () => {
+    stompClientRef.current?.deactivate();
+    stompClientRef.current = null;
+    chatEventRef.current = null;
+    setChatOpen(false);
+    setChatMessages([]);
+    setChatInput("");
+  };
+
+  const handleSendMessage = () => {
+    const text = chatInput.trim();
+    if (!text || !stompClientRef.current?.connected || !chatEventRef.current) return;
+    stompClientRef.current.publish({
+      destination: `/app/chat/${chatEventRef.current.id}`,
+      body: JSON.stringify({
+        content: text,
+        eventId: chatEventRef.current.id,
+        token: token,
+      }),
+    });
+    setChatInput("");
   };
 
   const handleSubmit = async (values: EventFormValues) => {
@@ -268,6 +370,8 @@ export default function MapPage() {
 
   if (!token) return null;
 
+  const isCreator = selectedEvent !== null && Number(userId) === selectedEvent.creatorId;
+
   return (
     <main style={{ position: "relative", height: "100vh", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px" }}>
@@ -281,6 +385,122 @@ export default function MapPage() {
       </div>
 
       <div style={{ flex: 1, display: "flex", position: "relative" }}>
+        {/* Chat panel — left side */}
+        {chatOpen && chatEventRef.current && (
+          <div
+            style={{
+              width: "360px",
+              height: "100%",
+              backgroundColor: "#16181D",
+              boxShadow: "2px 0 8px rgba(0,0,0,0.4)",
+              display: "flex",
+              flexDirection: "column",
+              flexShrink: 0,
+            }}
+          >
+            {/* Chat header */}
+            <div
+              style={{
+                padding: "12px 16px",
+                borderBottom: "1px solid #2e3138",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                flexShrink: 0,
+              }}
+            >
+              <Button type="text" onClick={handleCloseChat} style={{ color: "#aaa", padding: "0 4px" }}>
+                ←
+              </Button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={{ margin: 0, fontSize: "15px", color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {chatEventRef.current.title}
+                </h3>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>
+                  {chatEventRef.current.participantCount ?? 0} participant{chatEventRef.current.participantCount !== 1 ? "s" : ""}
+                </span>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                padding: "16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+              }}
+            >
+              {chatMessages.length === 0 && (
+                <p style={{ color: "#6b7280", textAlign: "center", marginTop: "32px", fontSize: "13px" }}>
+                  No messages yet. Be the first to say something!
+                </p>
+              )}
+              {chatMessages.map((msg) => {
+                return (
+                  <div
+                    key={msg.id}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <span style={{ fontSize: "11px", color: "#9ca3af", marginBottom: "2px" }}>
+                      {msg.senderUsername}
+                    </span>
+                    <div
+                      style={{
+                        maxWidth: "80%",
+                        padding: "8px 12px",
+                        borderRadius: "12px",
+                        backgroundColor: "#2e3138",
+                        color: "#fff",
+                        fontSize: "14px",
+                      }}
+                    >
+                      {msg.content}
+                    </div>
+                    <span style={{ fontSize: "10px", color: "#6b7280", marginTop: "2px" }}>
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                );
+              })}
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* Input */}
+            <div
+              style={{
+                padding: "12px 16px",
+                borderTop: "1px solid #2e3138",
+                display: "flex",
+                gap: "8px",
+                flexShrink: 0,
+              }}
+            >
+              <Input
+                placeholder="Type a message…"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onPressEnter={handleSendMessage}
+                style={{ backgroundColor: "#23262d", borderColor: "#444", color: "#fff" }}
+              />
+              <Button
+                type="primary"
+                onClick={handleSendMessage}
+                disabled={!chatInput.trim()}
+              >
+                Send
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Map */}
         <div style={{ flex: 1, position: "relative" }}>
           <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
           {panelOpen && (
@@ -297,6 +517,7 @@ export default function MapPage() {
           )}
         </div>
 
+        {/* Create event panel — right side */}
         {panelOpen && (
           <div
             style={{
@@ -308,6 +529,7 @@ export default function MapPage() {
               overflowY: "auto",
               display: "flex",
               flexDirection: "column",
+              flexShrink: 0,
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -439,6 +661,7 @@ export default function MapPage() {
         )}
       </div>
 
+      {/* Event detail modal */}
       <Modal
         open={selectedEvent !== null}
         onCancel={() => setSelectedEvent(null)}
@@ -448,6 +671,28 @@ export default function MapPage() {
       >
         {selectedEvent && (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+
+            {/* Join button — not creator and not yet a participant */}
+            {!isCreator && !selectedEvent.isParticipant && (
+              <Button type="primary" onClick={handleJoinEvent} loading={joiningEvent} block>
+                Join Event
+              </Button>
+            )}
+
+            {/* Chat + Leave buttons — participant or creator */}
+            {(selectedEvent.isParticipant || isCreator) && (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <Button type="primary" onClick={() => handleOpenChat(selectedEvent)} block>
+                  Join Chat
+                </Button>
+                {!isCreator && (
+                  <Button danger block>
+                    Leave Event
+                  </Button>
+                )}
+              </div>
+            )}
+
             <div>
               <span style={{ color: "#6b7280", fontSize: "12px" }}>Description</span>
               <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.description ?? "—"}</p>
@@ -473,7 +718,7 @@ export default function MapPage() {
               </div>
             </div>
             <div>
-              {Number(userId) == selectedEvent.creatorId && (
+              {isCreator && (
                 <div>
                   <span style={{ color: "#6b7280", fontSize: "12px" }}>Your Invite Code - visible to event creators only</span>
                   <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.inviteCode ?? "—"}</p>

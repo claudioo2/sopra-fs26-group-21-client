@@ -12,4 +12,5 @@ export interface EventDTO {
   creatorUsername: string | null;
   participantCount: number | null;
   pictureUrls: string[] | null;
+  isParticipant?: boolean;
 }
