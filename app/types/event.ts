@@ -13,4 +13,5 @@ export interface EventDTO {
   participantCount: number | null;
   pictureUrls: string[] | null;
   isParticipant?: boolean;
+  participantIds?: number[] | null;
 }
