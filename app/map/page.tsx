@@ -24,6 +24,10 @@ interface EventFormValues {
   privacy: "public" | "private";
 }
 
+interface EventJoinFormValues {
+  inviteCode: string;
+}
+
 interface Message {
   id: number;
   content: string;
@@ -396,21 +400,31 @@ export default function MapPage() {
     }
   };
 
-  const handleJoinByInviteCode = async (e:any) => {
+  const handleJoinByInviteCode = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const inviteCode = e.target.elements.inviteCode.value;
-    if (!inviteCode) {
+
+    const formData = new FormData(e.currentTarget);
+
+    const values: EventJoinFormValues = {
+        inviteCode: formData.get("inviteCode") as string,
+    };
+
+    if (!values.inviteCode) {
       messageApi.error("Please enter an invite code.");
       return;
     }
+
+    setJoiningEvent(true);
     try {
-      await apiService.post("/events/participants", { inviteCode, userId: Number(userId) }, { Authorization: `Bearer ${token}` });
+      await apiService.post("/events/participants",
+        { inviteCode: values.inviteCode, userId: Number(userId) },
+        { Authorization: `Bearer ${token}` }
+      );
       messageApi.success("You joined the event!");
-      router.push("/map");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to join event. Please check the invite code and try again.";
       messageApi.error(msg);
-    }
+    } finally { setJoiningEvent(false); }
   };
 
 
