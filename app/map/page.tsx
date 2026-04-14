@@ -20,11 +20,11 @@ const CATEGORY_COLORS: Record<EventCategory, string> = {
   ART:     "#ec4899",
   SOCIAL:  "#3b82f6",
   OUTDOOR: "#22c55e",
-  GAMING:  "#6366f1",
+  PARTY:   "#eab308",
   OTHER:   "#94a3b8",
 };
 
-const ALL_CATEGORIES: EventCategory[] = ["SPORTS", "MUSIC", "FOOD", "ART", "SOCIAL", "OUTDOOR", "GAMING", "OTHER"];
+const ALL_CATEGORIES: EventCategory[] = ["SPORTS", "MUSIC", "FOOD", "ART", "SOCIAL", "OUTDOOR", "PARTY", "OTHER"];
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   SPORTS:  "Sports",
@@ -33,8 +33,20 @@ const CATEGORY_LABELS: Record<EventCategory, string> = {
   ART:     "Art",
   SOCIAL:  "Social",
   OUTDOOR: "Outdoor",
-  GAMING:  "Gaming",
+  PARTY:   "Party",
   OTHER:   "Other",
+};
+
+// Lucide-style SVG icon paths (viewBox 0 0 24 24, stroke-based)
+const CATEGORY_ICONS: Record<EventCategory, string> = {
+  SPORTS:  `<polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  MUSIC:   `<path d="M9 18V5l12-2v13" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="6" cy="18" r="3" stroke="white" stroke-width="2" fill="none"/><circle cx="18" cy="16" r="3" stroke="white" stroke-width="2" fill="none"/>`,
+  FOOD:    `<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M7 2v20" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>`,
+  ART:     `<circle cx="13.5" cy="6.5" r=".5" fill="white"/><circle cx="17.5" cy="10.5" r=".5" fill="white"/><circle cx="8.5" cy="7.5" r=".5" fill="white"/><circle cx="6.5" cy="12.5" r=".5" fill="white"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" stroke="white" stroke-width="2" fill="none"/>`,
+  SOCIAL:  `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="9" cy="7" r="4" stroke="white" stroke-width="2" fill="none"/><path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>`,
+  OUTDOOR: `<path d="m8 3 4 8 5-5 5 15H2L8 3z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  PARTY:   `<path d="M5.8 11.3 2 22l10.7-3.79" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M4 3h.01" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M22 8h.01" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M15 2h.01" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M22 20h.01" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12v0c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11v0c-.11.7-.72 1.22-1.43 1.22H17" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98v0C9.52 4.9 9 5.52 9 6.23V7" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2z" stroke="white" stroke-width="2" fill="none"/>`,
+  OTHER:   `<circle cx="12" cy="12" r="10" stroke="white" stroke-width="2" fill="none"/><path d="M12 8v4" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M12 16h.01" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>`,
 };
 
 interface EventFormValues {
@@ -74,6 +86,7 @@ export default function MapPage() {
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
   const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
+  const [myEventsOnly, setMyEventsOnly] = useState(false);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
@@ -144,23 +157,41 @@ export default function MapPage() {
     mapboxgl.accessToken = accessToken;
 
     const createEventMarker = (event: EventDTO, map: mapboxgl.Map) => {
-      const color = event.category ? CATEGORY_COLORS[event.category] : "#c0392b";
-      const markerEl = document.createElement("div");
-      markerEl.style.cursor = "pointer";
-      markerEl.style.width = "32px";
-      markerEl.style.height = "42px";
-      markerEl.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="32" height="42">
-          <path d="M12 0C7.589 0 4 3.589 4 8c0 5.698 7.199 13.518 7.502 13.855a.665.665 0 0 0 .996 0C12.801 21.518 20 13.698 20 8c0-4.411-3.589-8-8-8z" fill="${color}"/>
-          <circle cx="12" cy="8" r="3.5" fill="white"/>
+      const color = event.category ? CATEGORY_COLORS[event.category] : "#94a3b8";
+      const icon = event.category ? CATEGORY_ICONS[event.category] : CATEGORY_ICONS.OTHER;
+
+      const isOngoing = (() => {
+        const now = new Date();
+        return new Date(event.startTime) <= now && now <= new Date(event.endTime);
+      })();
+
+      const wrapper = document.createElement("div");
+      wrapper.style.cssText = "position:relative; width:48px; height:62px; cursor:pointer;";
+
+      if (isOngoing) {
+        const pulse = document.createElement("div");
+        pulse.className = "marker-pulse-ring";
+        pulse.style.backgroundColor = color;
+        pulse.style.opacity = "0.4";
+        wrapper.appendChild(pulse);
+      }
+
+      wrapper.innerHTML += `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 62" width="48" height="62" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35))">
+          <circle cx="24" cy="24" r="22" fill="${color}"/>
+          <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+          <polygon points="24,58 16,40 32,40" fill="${color}"/>
+          <g transform="translate(12, 12)">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+              ${icon}
+            </svg>
+          </g>
         </svg>
       `;
 
-      markerEl.addEventListener("click", () => {
-        setSelectedEvent(event);
-      });
+      wrapper.addEventListener("click", () => setSelectedEvent(event));
 
-      const marker = new mapboxgl.Marker(markerEl)
+      const marker = new mapboxgl.Marker(wrapper)
         .setLngLat([event.longitude, event.latitude])
         .addTo(map);
 
@@ -240,7 +271,7 @@ export default function MapPage() {
     };
   }, [isMounted, token, apiService]);
 
-  // Re-fetch markers when category filters change
+  // Re-fetch markers when category filters or myEventsOnly change
   useEffect(() => {
     if (!mapInstanceRef.current || !token) return;
     const map = mapInstanceRef.current;
@@ -251,23 +282,41 @@ export default function MapPage() {
         activeCategories.forEach((cat) => { url += `&categories=${cat}`; });
       }
       try {
-        const events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
+        let events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
+        if (myEventsOnly) {
+          const uid = Number(userId);
+          events = events.filter(e => e.creatorId === uid || e.participantIds?.includes(uid));
+        }
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
         events.forEach((event) => {
           if (!event.isPrivate || event.participantIds?.includes(Number(userId))) {
-            const color = event.category ? CATEGORY_COLORS[event.category] : "#c0392b";
-            const markerEl = document.createElement("div");
-            markerEl.style.cursor = "pointer";
-            markerEl.style.width = "32px";
-            markerEl.style.height = "42px";
-            markerEl.innerHTML = `
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="32" height="42">
-                <path d="M12 0C7.589 0 4 3.589 4 8c0 5.698 7.199 13.518 7.502 13.855a.665.665 0 0 0 .996 0C12.801 21.518 20 13.698 20 8c0-4.411-3.589-8-8-8z" fill="${color}"/>
-                <circle cx="12" cy="8" r="3.5" fill="white"/>
+            const color = event.category ? CATEGORY_COLORS[event.category] : "#94a3b8";
+            const icon = event.category ? CATEGORY_ICONS[event.category] : CATEGORY_ICONS.OTHER;
+            const isOngoing = (() => {
+              const now = new Date();
+              return new Date(event.startTime) <= now && now <= new Date(event.endTime);
+            })();
+            const wrapper = document.createElement("div");
+            wrapper.style.cssText = "position:relative; width:48px; height:62px; cursor:pointer;";
+            if (isOngoing) {
+              const pulse = document.createElement("div");
+              pulse.className = "marker-pulse-ring";
+              pulse.style.backgroundColor = color;
+              pulse.style.opacity = "0.4";
+              wrapper.appendChild(pulse);
+            }
+            wrapper.innerHTML += `
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 62" width="48" height="62" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35))">
+                <circle cx="24" cy="24" r="22" fill="${color}"/>
+                <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+                <polygon points="24,58 16,40 32,40" fill="${color}"/>
+                <g transform="translate(12, 12)">
+                  <svg viewBox="0 0 24 24" width="24" height="24">${icon}</svg>
+                </g>
               </svg>`;
-            markerEl.addEventListener("click", () => setSelectedEvent(event));
-            const marker = new mapboxgl.Marker(markerEl).setLngLat([event.longitude, event.latitude]).addTo(map);
+            wrapper.addEventListener("click", () => setSelectedEvent(event));
+            const marker = new mapboxgl.Marker(wrapper).setLngLat([event.longitude, event.latitude]).addTo(map);
             markersRef.current.push(marker);
           }
         });
@@ -276,7 +325,7 @@ export default function MapPage() {
       }
     };
     fetchAndRefresh();
-  }, [activeCategories, token, apiService, userId]);
+  }, [activeCategories, myEventsOnly, token, apiService, userId]);
 
   const toggleCategory = (cat: EventCategory) => {
     setActiveCategories((prev) => {
@@ -513,8 +562,8 @@ export default function MapPage() {
       {/* Top bar */}
       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
         <h1 style={{ margin: 0 }}>Map</h1>
-        <Button type="primary" onClick={openPanel}>
-          + Create Event
+        <Button type="primary" onClick={openPanel} shape="circle" style={{ fontWeight: 700, fontSize: 20, width: 40, height: 40, minWidth: 40 }}>
+          +
         </Button>
         <form onSubmit={handleJoinByInviteCode} style={{ display: "flex", gap: "8px", color: "#fff" }}>
           <input
@@ -530,52 +579,11 @@ export default function MapPage() {
         <Button onClick={() => router.push(`/users/${userId}`)} style={{ marginLeft: "auto" }}>
           My Profile
         </Button>
-        <Button onClick={handleLogout}>
+        <Button onClick={handleLogout} style={{ color: "#ef4444", borderColor: "#ef4444" }}>
           Logout
         </Button>
       </div>
 
-      {/* Category filter pills */}
-      <div style={{ padding: "6px 16px 10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-        {ALL_CATEGORIES.map((cat) => {
-          const active = activeCategories.has(cat);
-          return (
-            <button
-              key={cat}
-              onClick={() => toggleCategory(cat)}
-              style={{
-                padding: "4px 12px",
-                borderRadius: "999px",
-                border: `2px solid ${CATEGORY_COLORS[cat]}`,
-                backgroundColor: active ? CATEGORY_COLORS[cat] : "transparent",
-                color: active ? "#fff" : CATEGORY_COLORS[cat],
-                cursor: "pointer",
-                fontSize: "13px",
-                fontWeight: 500,
-                transition: "all 0.15s",
-              }}
-            >
-              {CATEGORY_LABELS[cat]}
-            </button>
-          );
-        })}
-        {activeCategories.size > 0 && (
-          <button
-            onClick={() => setActiveCategories(new Set())}
-            style={{
-              padding: "4px 12px",
-              borderRadius: "999px",
-              border: "2px solid #6b7280",
-              backgroundColor: "transparent",
-              color: "#6b7280",
-              cursor: "pointer",
-              fontSize: "13px",
-            }}
-          >
-            Clear
-          </button>
-        )}
-      </div>
 
       <div style={{ flex: 1, display: "flex", position: "relative" }}>
         {/* Chat panel — left side */}
@@ -696,15 +704,101 @@ export default function MapPage() {
         {/* Map */}
         <div style={{ flex: 1, position: "relative" }}>
           <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
+
+          {/* Filter pills overlay */}
+          <div style={{
+            position: "absolute",
+            top: 12,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 2,
+            display: "flex",
+            gap: "6px",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            padding: "8px 12px",
+            backgroundColor: "rgba(255,255,255,0.88)",
+            backdropFilter: "blur(6px)",
+            borderRadius: "999px",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+            maxWidth: "calc(100% - 32px)",
+          }}>
+            <button
+              onClick={() => setMyEventsOnly((v) => !v)}
+              style={{
+                padding: "3px 11px",
+                borderRadius: "999px",
+                border: "2px solid #f59e0b",
+                backgroundColor: myEventsOnly ? "#f59e0b" : "transparent",
+                color: myEventsOnly ? "#fff" : "#f59e0b",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
+              }}
+            >
+              ★ My Events
+            </button>
+
+            <div style={{ width: 1, height: 20, backgroundColor: "#d1d5db", margin: "0 2px", alignSelf: "center" }} />
+
+            {ALL_CATEGORIES.map((cat) => {
+              const active = activeCategories.has(cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => toggleCategory(cat)}
+                  style={{
+                    padding: "3px 11px",
+                    borderRadius: "999px",
+                    border: `2px solid ${CATEGORY_COLORS[cat]}`,
+                    backgroundColor: active ? CATEGORY_COLORS[cat] : "transparent",
+                    color: active ? "#fff" : CATEGORY_COLORS[cat],
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    fontWeight: 500,
+                    transition: "all 0.15s",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {CATEGORY_LABELS[cat]}
+                </button>
+              );
+            })}
+            {activeCategories.size > 0 && (
+              <button
+                onClick={() => setActiveCategories(new Set())}
+                style={{
+                  padding: "3px 11px",
+                  borderRadius: "999px",
+                  border: "2px solid #9ca3af",
+                  backgroundColor: "transparent",
+                  color: "#6b7280",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                ✕ Clear
+              </button>
+            )}
+          </div>
           {panelOpen && (
             <div style={{
               position: "absolute", left: "50%", top: "50%",
-              transform: "translate(-20px, -37px)",
+              transform: "translate(-30px, -72px)",
               pointerEvents: "none", zIndex: 1,
             }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="40" height="54">
-                <path d="M12 0C7.589 0 4 3.589 4 8c0 5.698 7.199 13.518 7.502 13.855a.665.665 0 0 0 .996 0C12.801 21.518 20 13.698 20 8c0-4.411-3.589-8-8-8z" fill="#22c55e"/>
-                <circle cx="12" cy="8" r="3.5" fill="white"/>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 78" width="60" height="78" style={{ filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.4))" }}>
+                <circle cx="30" cy="30" r="28" fill="#22c55e"/>
+                <circle cx="30" cy="30" r="28" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2"/>
+                <polygon points="30,76 20,52 40,52" fill="#22c55e"/>
+                <g transform="translate(14,14)">
+                  <svg viewBox="0 0 24 24" width="32" height="32">
+                    <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+                  </svg>
+                </g>
               </svg>
             </div>
           )}

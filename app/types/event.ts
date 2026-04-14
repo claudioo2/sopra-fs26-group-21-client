@@ -5,7 +5,7 @@ export type EventCategory =
   | "ART"
   | "SOCIAL"
   | "OUTDOOR"
-  | "GAMING"
+  | "PARTY"
   | "OTHER";
 
 export interface EventDTO {
