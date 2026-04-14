@@ -70,8 +70,8 @@ reason).
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
-| **GabrielVuattoux** | 14.04.2026   | https://github.com/claudioo2/sopra-fs26-group-21-server/commit/ae2081828083925e908df26e0d71ad141e159309) | Add event category field with server-side filtering support | This is a basis from front and backend for the filtering, we then can add the fonctionnality to follow other users |
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **GabrielVuattoux** | 14.04.2026   | https://github.com/claudioo2/sopra-fs26-group-21-server/commit/ae2081828083925e908df26e0d71ad141e159309 | Add event category field with server-side filtering support | This is a basis from front and backend for the filtering, we then can add the fonctionnality to follow other users |
+|                    | [date]   | https://github.com/claudioo2/sopra-fs26-group-21-client/commit/35f6a4d750a366be7c8f81dfca90cc83b5142dff | Redesign map markers with category icons, pulse for ongoing events, filter overlay and UI tweaks | more clean |
 | **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **claudioo2** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
