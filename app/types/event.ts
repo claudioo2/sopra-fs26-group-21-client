@@ -1,3 +1,13 @@
+export type EventCategory =
+  | "SPORTS"
+  | "MUSIC"
+  | "FOOD"
+  | "ART"
+  | "SOCIAL"
+  | "OUTDOOR"
+  | "GAMING"
+  | "OTHER";
+
 export interface EventDTO {
   id: number;
   title: string;
@@ -8,6 +18,7 @@ export interface EventDTO {
   longitude: number;
   isPrivate: boolean;
   inviteCode: string | null;
+  category: EventCategory | null;
   creatorId: number | null;
   creatorUsername: string | null;
   participantCount: number | null;

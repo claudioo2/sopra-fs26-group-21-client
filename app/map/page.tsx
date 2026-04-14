@@ -4,15 +4,38 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal } from "antd";
+import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal, Select } from "antd";
 import { LockOutlined, GlobalOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
-import { EventDTO } from "@/types/event";
+import { EventCategory, EventDTO } from "@/types/event";
 import { getApiDomain } from "@/utils/domain";
-import { Color } from "antd/es/color-picker";
+
+const CATEGORY_COLORS: Record<EventCategory, string> = {
+  SPORTS:  "#f97316",
+  MUSIC:   "#a855f7",
+  FOOD:    "#f43f5e",
+  ART:     "#ec4899",
+  SOCIAL:  "#3b82f6",
+  OUTDOOR: "#22c55e",
+  GAMING:  "#6366f1",
+  OTHER:   "#94a3b8",
+};
+
+const ALL_CATEGORIES: EventCategory[] = ["SPORTS", "MUSIC", "FOOD", "ART", "SOCIAL", "OUTDOOR", "GAMING", "OTHER"];
+
+const CATEGORY_LABELS: Record<EventCategory, string> = {
+  SPORTS:  "Sports",
+  MUSIC:   "Music",
+  FOOD:    "Food",
+  ART:     "Art",
+  SOCIAL:  "Social",
+  OUTDOOR: "Outdoor",
+  GAMING:  "Gaming",
+  OTHER:   "Other",
+};
 
 interface EventFormValues {
   title: string;
@@ -22,6 +45,7 @@ interface EventFormValues {
   endTime: Dayjs;
   description: string;
   privacy: "public" | "private";
+  category: EventCategory;
 }
 
 interface EventJoinFormValues {
@@ -48,6 +72,8 @@ export default function MapPage() {
   const stompClientRef = useRef<Client | null>(null);
   const chatEventRef = useRef<EventDTO | null>(null);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
+
+  const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
@@ -118,13 +144,14 @@ export default function MapPage() {
     mapboxgl.accessToken = accessToken;
 
     const createEventMarker = (event: EventDTO, map: mapboxgl.Map) => {
+      const color = event.category ? CATEGORY_COLORS[event.category] : "#c0392b";
       const markerEl = document.createElement("div");
       markerEl.style.cursor = "pointer";
       markerEl.style.width = "32px";
       markerEl.style.height = "42px";
       markerEl.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="32" height="42">
-          <path d="M12 0C7.589 0 4 3.589 4 8c0 5.698 7.199 13.518 7.502 13.855a.665.665 0 0 0 .996 0C12.801 21.518 20 13.698 20 8c0-4.411-3.589-8-8-8z" fill="#c0392b"/>
+          <path d="M12 0C7.589 0 4 3.589 4 8c0 5.698 7.199 13.518 7.502 13.855a.665.665 0 0 0 .996 0C12.801 21.518 20 13.698 20 8c0-4.411-3.589-8-8-8z" fill="${color}"/>
           <circle cx="12" cy="8" r="3.5" fill="white"/>
         </svg>
       `;
@@ -140,13 +167,14 @@ export default function MapPage() {
       markersRef.current.push(marker);
     };
 
-    const fetchAndDisplayEvents = async (map: mapboxgl.Map, center: [number, number]) => {
+    const fetchAndDisplayEvents = async (map: mapboxgl.Map, center: [number, number], categories: Set<EventCategory>) => {
       try {
         const [lng, lat] = center;
-        const events = await apiService.get<EventDTO[]>(
-          `/events?longitude=${lng}&latitude=${lat}&radius=20`,
-          { Authorization: `Bearer ${token}` }
-        );
+        let url = `/events?longitude=${lng}&latitude=${lat}&radius=20`;
+        if (categories.size > 0) {
+          categories.forEach((cat) => { url += `&categories=${cat}`; });
+        }
+        const events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
 
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
@@ -183,14 +211,14 @@ export default function MapPage() {
 
       map.on("load", () => {
         mapCenterRef.current = center;
-        fetchAndDisplayEvents(map, center);
+        fetchAndDisplayEvents(map, center, activeCategories);
       });
 
       map.on("moveend", () => {
         const c = map.getCenter();
         mapCenterRef.current = [c.lng, c.lat];
         setSelectedLocation([c.lng, c.lat]);
-        fetchAndDisplayEvents(map, [c.lng, c.lat]);
+        fetchAndDisplayEvents(map, [c.lng, c.lat], activeCategories);
       });
     };
 
@@ -211,6 +239,53 @@ export default function MapPage() {
       mapInstanceRef.current?.remove();
     };
   }, [isMounted, token, apiService]);
+
+  // Re-fetch markers when category filters change
+  useEffect(() => {
+    if (!mapInstanceRef.current || !token) return;
+    const map = mapInstanceRef.current;
+    const center = mapCenterRef.current;
+    const fetchAndRefresh = async () => {
+      let url = `/events?longitude=${center[0]}&latitude=${center[1]}&radius=20`;
+      if (activeCategories.size > 0) {
+        activeCategories.forEach((cat) => { url += `&categories=${cat}`; });
+      }
+      try {
+        const events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
+        markersRef.current.forEach((m) => m.remove());
+        markersRef.current = [];
+        events.forEach((event) => {
+          if (!event.isPrivate || event.participantIds?.includes(Number(userId))) {
+            const color = event.category ? CATEGORY_COLORS[event.category] : "#c0392b";
+            const markerEl = document.createElement("div");
+            markerEl.style.cursor = "pointer";
+            markerEl.style.width = "32px";
+            markerEl.style.height = "42px";
+            markerEl.innerHTML = `
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 32" width="32" height="42">
+                <path d="M12 0C7.589 0 4 3.589 4 8c0 5.698 7.199 13.518 7.502 13.855a.665.665 0 0 0 .996 0C12.801 21.518 20 13.698 20 8c0-4.411-3.589-8-8-8z" fill="${color}"/>
+                <circle cx="12" cy="8" r="3.5" fill="white"/>
+              </svg>`;
+            markerEl.addEventListener("click", () => setSelectedEvent(event));
+            const marker = new mapboxgl.Marker(markerEl).setLngLat([event.longitude, event.latitude]).addTo(map);
+            markersRef.current.push(marker);
+          }
+        });
+      } catch (error) {
+        console.error("Failed to refresh events:", error);
+      }
+    };
+    fetchAndRefresh();
+  }, [activeCategories, token, apiService, userId]);
+
+  const toggleCategory = (cat: EventCategory) => {
+    setActiveCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
+  };
 
   // Address geocoding with 500ms debounce
   useEffect(() => {
@@ -388,6 +463,7 @@ export default function MapPage() {
       longitude: lng,
       latitude: lat,
       isPrivate: values.privacy === "private",
+      category: values.category,
     };
 
     try {
@@ -434,20 +510,20 @@ export default function MapPage() {
 
   return (
     <main style={{ position: "relative", height: "100vh", display: "flex", flexDirection: "column" }}>
-      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px" }}>
+      {/* Top bar */}
+      <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
         <h1 style={{ margin: 0 }}>Map</h1>
         <Button type="primary" onClick={openPanel}>
           + Create Event
         </Button>
-        <form onSubmit={handleJoinByInviteCode} style={{ display: "flex", gap: "8px" , color: "#fff"}}>
+        <form onSubmit={handleJoinByInviteCode} style={{ display: "flex", gap: "8px", color: "#fff" }}>
           <input
             name="inviteCode"
             type="text"
             placeholder="Enter event invite code"
-            style={{ fontSize: "18px"}}
+            style={{ fontSize: "18px" }}
           />
-
-          <button type="submit" style={{ backgroundColor: "#1890ff", color: "#fff", border: "none", padding: "10px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "15px"}}>
+          <button type="submit" style={{ backgroundColor: "#1890ff", color: "#fff", border: "none", padding: "10px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "15px" }}>
             Join Event
           </button>
         </form>
@@ -457,6 +533,48 @@ export default function MapPage() {
         <Button onClick={handleLogout}>
           Logout
         </Button>
+      </div>
+
+      {/* Category filter pills */}
+      <div style={{ padding: "6px 16px 10px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        {ALL_CATEGORIES.map((cat) => {
+          const active = activeCategories.has(cat);
+          return (
+            <button
+              key={cat}
+              onClick={() => toggleCategory(cat)}
+              style={{
+                padding: "4px 12px",
+                borderRadius: "999px",
+                border: `2px solid ${CATEGORY_COLORS[cat]}`,
+                backgroundColor: active ? CATEGORY_COLORS[cat] : "transparent",
+                color: active ? "#fff" : CATEGORY_COLORS[cat],
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 500,
+                transition: "all 0.15s",
+              }}
+            >
+              {CATEGORY_LABELS[cat]}
+            </button>
+          );
+        })}
+        {activeCategories.size > 0 && (
+          <button
+            onClick={() => setActiveCategories(new Set())}
+            style={{
+              padding: "4px 12px",
+              borderRadius: "999px",
+              border: "2px solid #6b7280",
+              backgroundColor: "transparent",
+              color: "#6b7280",
+              cursor: "pointer",
+              fontSize: "13px",
+            }}
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       <div style={{ flex: 1, display: "flex", position: "relative" }}>
@@ -714,6 +832,23 @@ export default function MapPage() {
                   <Input.TextArea placeholder="Brief description" rows={3} />
                 </Form.Item>
 
+                <Form.Item
+                  label="Category"
+                  name="category"
+                  rules={[{ required: true, message: "Category is required" }]}
+                >
+                  <Select placeholder="Select a category">
+                    {ALL_CATEGORIES.map((cat) => (
+                      <Select.Option key={cat} value={cat}>
+                        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: CATEGORY_COLORS[cat], display: "inline-block" }} />
+                          {CATEGORY_LABELS[cat]}
+                        </span>
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+
                 <Form.Item label="Privacy" name="privacy" initialValue="private">
                   <Segmented
                     style={{ caretColor: "transparent" }}
@@ -768,6 +903,21 @@ export default function MapPage() {
               </div>
             )}
 
+            {selectedEvent.category && (
+              <div>
+                <span style={{
+                  display: "inline-block",
+                  padding: "2px 10px",
+                  borderRadius: "999px",
+                  backgroundColor: CATEGORY_COLORS[selectedEvent.category],
+                  color: "#fff",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                }}>
+                  {CATEGORY_LABELS[selectedEvent.category]}
+                </span>
+              </div>
+            )}
             <div>
               <span style={{ color: "#6b7280", fontSize: "12px" }}>Description</span>
               <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.description ?? "—"}</p>
