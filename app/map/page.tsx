@@ -452,7 +452,7 @@ export default function MapPage() {
           </button>
         </form>
         <Button onClick={() => router.push(`/users/${userId}`)} style={{ marginLeft: "auto" }}>
-          Mon profil
+          My Profile
         </Button>
         <Button onClick={handleLogout}>
           Logout
