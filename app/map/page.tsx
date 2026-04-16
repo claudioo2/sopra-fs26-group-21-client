@@ -90,6 +90,7 @@ export default function MapPage() {
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
+  const [leavingEvent, setLeavingEvent] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
   const [addressQuery, setAddressQuery] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
@@ -460,6 +461,26 @@ export default function MapPage() {
     setChatMessages([]);
     setChatInput("");
   };
+
+  const handleLeaveEvent = async (selectedEvent: EventDTO | null) => {
+    if (!selectedEvent) return;
+    setLeavingEvent(true);
+    try {
+      await apiService.delete(
+        `/events/${selectedEvent.id}/participants/${userId}`,
+        { Authorization: `Bearer ${token}` }
+      );
+      setSelectedEvent({ ...selectedEvent, isParticipant: false });
+      messageApi.success("You left the event.");
+      mapInstanceRef.current?.fire("moveend");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to leave event";
+      messageApi.error(msg);
+    } finally {
+      setLeavingEvent(false);
+    }
+  };
+
 
   const handleSendMessage = () => {
     const text = chatInput.trim();
@@ -990,7 +1011,7 @@ export default function MapPage() {
                   Join Chat
                 </Button>
                 {!isCreator && (
-                  <Button danger block>
+                  <Button onClick={() => handleLeaveEvent(selectedEvent)} danger block>
                     Leave Event
                   </Button>
                 )}

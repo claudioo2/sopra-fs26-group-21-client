@@ -97,11 +97,11 @@ export class ApiService {
    * @param data - The payload to update.
    * @returns JSON data of type T.
    */
-  public async put<T>(endpoint: string, data: unknown): Promise<T> {
+  public async put<T>(endpoint: string, data: unknown, extraHeaders?: Record<string, string>): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const res = await fetch(url, {
       method: "PUT",
-      headers: this.defaultHeaders,
+      headers: { ...this.defaultHeaders, ...extraHeaders },
       body: JSON.stringify(data),
     });
     return this.processResponse<T>(
@@ -115,11 +115,11 @@ export class ApiService {
    * @param endpoint - The API endpoint (e.g. "/users/123").
    * @returns JSON data of type T.
    */
-  public async delete<T>(endpoint: string): Promise<T> {
+  public async delete<T>(endpoint: string, extraHeaders?: Record<string, string>): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     const res = await fetch(url, {
       method: "DELETE",
-      headers: this.defaultHeaders,
+      headers: { ...this.defaultHeaders, ...extraHeaders },
     });
     return this.processResponse<T>(
       res,
