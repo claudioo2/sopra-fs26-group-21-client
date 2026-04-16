@@ -78,7 +78,7 @@ reason).
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **semirIbra** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+| **semirIbra** | [16.04.2026]   | [Backend: https://github.com/claudioo2/sopra-fs26-group-21-server/commit/8e08b19da148102a0883a6565453a4da7282a842 , Front-end: https://github.com/claudioo2/sopra-fs26-group-21-client/commit/b8ffd456d64ab445defa34f751ddbe899254ffca , Front-end: https://github.com/claudioo2/sopra-fs26-group-21-client/commit/01490112cebdf543c48c11b126710a09f44c2051] | [This is related to US14: Implemented the “Leave Event” functionality, allowing participants to exit an event. This includes closing the chat immediately after leaving, updating the UI so that “Leave Event” becomes “Join Event”, and removing the user from the event’s participant list in the backend.] | [This feature ensures that users maintain full control over their event participation. Leaving an event stops unwanted notifications, prevents further chat access and keeps the participant list accurate. This improves also the user experinnce]|
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 
 
