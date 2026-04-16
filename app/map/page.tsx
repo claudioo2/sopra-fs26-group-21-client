@@ -486,6 +486,28 @@ export default function MapPage() {
     }
   };
 
+  const handleDeleteEvent = async (selectedEvent: EventDTO | null) => {
+    if (!selectedEvent) return;
+    Modal.confirm({
+      title: "Delete Event",
+      content: "Are you sure you want to delete this event?",
+      onOk: async () => {
+        try {
+          await apiService.delete(
+            `/events/${selectedEvent.id}`,
+            { Authorization: `Bearer ${token}` }
+          );
+          setSelectedEvent(null);
+          messageApi.success("Event deleted.");
+          mapInstanceRef.current?.fire("moveend");
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Failed to delete event";
+          messageApi.error(msg);
+        }
+      },
+    });
+  };
+
 
   const handleSendMessage = () => {
     const text = chatInput.trim();
@@ -1087,6 +1109,11 @@ export default function MapPage() {
                 <p style={{ margin: "2px 0 0 0", color: "#9ca3af" }}>No photos available</p>
               )}
             </div>
+            // later make it only possible for the creator to see the delete button...
+              <Button onClick={() => handleDeleteEvent(selectedEvent)} danger block>
+              Delete Event
+              </Button>
+            
           </div>
         )}
       </Modal>
