@@ -472,6 +472,11 @@ export default function MapPage() {
       );
       setSelectedEvent({ ...selectedEvent, isParticipant: false });
       messageApi.success("You left the event.");
+
+      if (chatEventRef.current?.id === selectedEvent.id) {
+        handleCloseChat();
+      }
+      
       mapInstanceRef.current?.fire("moveend");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to leave event";
