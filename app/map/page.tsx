@@ -1018,8 +1018,8 @@ export default function MapPage() {
         open={selectedEvent !== null}
         onCancel={() => setSelectedEvent(null)}
         footer={null}
-        title={selectedEvent?.title}
-        styles={{ header: { color: "#000" } }}
+        title={<span style={{ color: "#111827" }}>{selectedEvent?.title}</span>}
+        styles={{ header: { color: "#111827" } }}
         width={480}
       >
         {selectedEvent && (
