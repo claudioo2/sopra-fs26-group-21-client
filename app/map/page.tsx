@@ -609,15 +609,29 @@ export default function MapPage() {
     <main style={{ position: "relative", height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Top bar */}
       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0 }}>Map</h1>
-        <Button type="primary" onClick={openPanel} shape="circle" style={{ fontWeight: 700, fontSize: 20, width: 40, height: 40, minWidth: 40 }}>
-          +
-        </Button>
+        <h1 style={{ margin: 0 }}>Spontaneo  </h1>
+        <Button
+  type="primary"
+  onClick={openPanel}
+  shape="circle"
+  style={{
+    width: 40,
+    height: 40,
+    minWidth: 40,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  }}
+>
+  <span style={{ fontSize: 36, fontWeight: 700, position: "relative", top: "-4px" }}>
+    +
+  </span>
+</Button>
         <form onSubmit={handleJoinByInviteCode} style={{ display: "flex", gap: "8px", color: "#fff" }}>
           <input
             name="inviteCode"
             type="text"
-            placeholder="Enter event invite code"
+            placeholder="  Enter event invite code"
             style={{ fontSize: "18px" }}
           />
           <button type="submit" style={{ backgroundColor: "#1890ff", color: "#fff", border: "none", padding: "10px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "15px" }}>
@@ -869,7 +883,7 @@ export default function MapPage() {
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
               <h2 style={{ margin: 0, fontSize: "18px" }}>Create Event</h2>
-              <Button type="text" onClick={closePanel} style={{ fontSize: "18px", lineHeight: 1 }}>
+              <Button type="text" onClick={closePanel} style={{ fontSize: "18px", lineHeight: 1 , color: "white"}}>
                 ×
               </Button>
             </div>
@@ -925,7 +939,7 @@ export default function MapPage() {
                 }
               }
             }}>
-              <Form form={form} layout="vertical" onFinish={handleSubmit}>
+              <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ color: "black" }}>
                 <Form.Item
                   label="Title"
                   name="title"
@@ -979,7 +993,7 @@ export default function MapPage() {
                   name="category"
                   rules={[{ required: true, message: "Category is required" }]}
                 >
-                  <Select placeholder="Select a category">
+                  <Select mode= "multiple" placeholder="Select a category">
                     {ALL_CATEGORIES.map((cat) => (
                       <Select.Option key={cat} value={cat}>
                         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1025,26 +1039,6 @@ export default function MapPage() {
         {selectedEvent && (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 
-            {/* Join button — not creator and not yet a participant */}
-            {!isCreator && !selectedEvent.isParticipant && (
-              <Button type="primary" onClick={handleJoinEvent} loading={joiningEvent} block>
-                Join Event
-              </Button>
-            )}
-
-            {/* Chat + Leave buttons — participant or creator */}
-            {(selectedEvent.isParticipant || isCreator) && (
-              <div style={{ display: "flex", gap: "8px" }}>
-                <Button type="primary" onClick={() => handleOpenChat(selectedEvent)} block>
-                  Join Chat
-                </Button>
-                {!isCreator && (
-                  <Button onClick={() => handleLeaveEvent(selectedEvent)} danger block>
-                    Leave Event
-                  </Button>
-                )}
-              </div>
-            )}
 
             {selectedEvent.category && (
               <div>
@@ -1067,16 +1061,6 @@ export default function MapPage() {
             </div>
             <div style={{ display: "flex", gap: "24px" }}>
               <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>Start</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.startTime).toLocaleString()}</p>
-              </div>
-              <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>End</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.endTime).toLocaleString()}</p>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "24px" }}>
-              <div>
                 <span style={{ color: "#6b7280", fontSize: "12px" }}>Organizer</span>
                 <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.creatorUsername ?? "—"}</p>
               </div>
@@ -1085,6 +1069,17 @@ export default function MapPage() {
                 <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.participantCount ?? 0}</p>
               </div>
             </div>
+            <div style={{ display: "flex", gap: "24px" }}>
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>Start</span>
+                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.startTime).toLocaleString()}</p>
+              </div>
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>End</span>
+                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.endTime).toLocaleString()}</p>
+              </div>
+            </div>
+            
             <div>
               {isCreator && (
                 <div>
@@ -1109,6 +1104,26 @@ export default function MapPage() {
               ) : (
                 <p style={{ margin: "2px 0 0 0", color: "#9ca3af" }}>No photos available</p>
               )}
+              {/* Join button — not creator and not yet a participant */}
+            {!isCreator && !selectedEvent.isParticipant && (
+              <Button type="primary" onClick={handleJoinEvent} loading={joiningEvent} block>
+                Join Event
+              </Button>
+            )}
+
+            {/* Chat + Leave buttons — participant or creator */}
+            {(selectedEvent.isParticipant || isCreator) && (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <Button type="primary" onClick={() => handleOpenChat(selectedEvent)} block>
+                  Join Chat
+                </Button>
+                {!isCreator && (
+                  <Button onClick={() => handleLeaveEvent(selectedEvent)} danger block>
+                    Leave Event
+                  </Button>
+                )}
+              </div>
+            )}
             </div>
             // later make it only possible for the creator to see the delete button...
               <Button onClick={() => handleDeleteEvent(selectedEvent)} danger block>
