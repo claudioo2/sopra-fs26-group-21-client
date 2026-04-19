@@ -1019,6 +1019,7 @@ export default function MapPage() {
         onCancel={() => setSelectedEvent(null)}
         footer={null}
         title={selectedEvent?.title}
+        styles={{ header: { color: "#000" } }}
         width={480}
       >
         {selectedEvent && (
