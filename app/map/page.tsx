@@ -1018,7 +1018,8 @@ export default function MapPage() {
         open={selectedEvent !== null}
         onCancel={() => setSelectedEvent(null)}
         footer={null}
-        title={selectedEvent?.title}
+        title={<span style={{ color: "#111827" }}>{selectedEvent?.title}</span>}
+        styles={{ header: { color: "#111827" } }}
         width={480}
       >
         {selectedEvent && (
@@ -1092,23 +1093,12 @@ export default function MapPage() {
                 </div>
               )}
             </div>
-            <div>
-              <span style={{ color: "#6b7280", fontSize: "12px" }}>Photos</span>
-              {selectedEvent.pictureUrls && selectedEvent.pictureUrls.length > 0 ? (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "6px" }}>
-                  {selectedEvent.pictureUrls.map((url, i) => (
-                    <img
-                      key={i}
-                      src={url}
-                      alt={`Event photo ${i + 1}`}
-                      style={{ width: "120px", height: "80px", objectFit: "cover", borderRadius: "6px" }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p style={{ margin: "2px 0 0 0", color: "#9ca3af" }}>No photos available</p>
-              )}
-            </div>
+            <Button
+              block
+              onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}
+            >
+              View Board
+            </Button>
             // later make it only possible for the creator to see the delete button...
               <Button onClick={() => handleDeleteEvent(selectedEvent)} danger block>
               Delete Event
