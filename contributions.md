@@ -70,10 +70,8 @@ reason).
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
 | **GabrielVuattoux** | 14.04.2026   | https://github.com/claudioo2/sopra-fs26-group-21-server/commit/ae2081828083925e908df26e0d71ad141e159309 | Add event category field with server-side filtering support | This is a basis from front and backend for the filtering, we then can add the fonctionnality to follow other users |
 |                    | [date]   | https://github.com/claudioo2/sopra-fs26-group-21-client/commit/35f6a4d750a366be7c8f81dfca90cc83b5142dff | Redesign map markers with category icons, pulse for ongoing events, filter overlay and UI tweaks | more clean |
-| **fra-a11y** | 10.04.2026  | https://github.com/claudioo2/sopra-fs26-group-21-server/pull/83/changes/cf2d5ba61ac05dd766b59d69bef1fe8dd7587426 | On the user profile page is possible to display the username and the bio  | [Why this contribution is relevant] |
-|                    | 19.04.2026   | https://github.com/claudioo2/sopra-fs26-group-21-client/issues/27 | - Replaced "Photos" section in event modal with "View Board" button
-- Added /events/[id]/board page with header, back arrow and "+ Add Post" button
-- Add Post modal with 3 options: photo + comment, comment only, emoji picker | This feature is an interactive space of the app , where user can share their photos, comment and emoji of the event |
+| **fra-a11y** | 10.04.2026  | https://github.com/claudioo2/sopra-fs26-group-21-server/pull/83/changes/cf2d5ba61ac05dd766b59d69bef1fe8dd7587426 | On the user profile page is possible to display the username and the bio  | Relevant for the user to see his profile page and info |
+|                    | 19.04.2026   | https://github.com/claudioo2/sopra-fs26-group-21-client/issues/27 | Replaced "Photos" section in event modal with "View Board" button. Added /events/[id]/board page with header, back arrow and "+ Add Post" button. Add Post modal with 3 options: photo + comment, comment only, emoji picker | This feature is an interactive space of the app , where user can share their photos, comment and emoji of the event |
 | **claudioo2** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
