@@ -470,7 +470,7 @@ export default function MapPage() {
         `/events/${selectedEvent.id}/participants/${userId}`,
         { Authorization: `Bearer ${token}` }
       );
-      setSelectedEvent({ ...selectedEvent, isParticipant: false });
+      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 });
       messageApi.success("You left the event.");
 
       if (chatEventRef.current?.id === selectedEvent.id) {
@@ -487,26 +487,30 @@ export default function MapPage() {
   };
 
   const handleDeleteEvent = async (selectedEvent: EventDTO | null) => {
-    if (!selectedEvent) return;
-    Modal.confirm({
-      title: "Delete Event",
-      content: "Are you sure you want to delete this event?",
-      onOk: async () => {
-        try {
-          await apiService.delete(
-            `/events/${selectedEvent.id}`,
-            { Authorization: `Bearer ${token}` }
-          );
-          setSelectedEvent(null);
-          messageApi.success("Event deleted.");
-          mapInstanceRef.current?.fire("moveend");
-        } catch (error) {
-          const msg = error instanceof Error ? error.message : "Failed to delete event";
-          messageApi.error(msg);
-        }
-      },
-    });
-  };
+  if (!selectedEvent) return;
+
+  const confirmed = window.confirm("Are you sure you want to delete this event?");
+  if (!confirmed) return;
+
+  try {
+    await apiService.delete(
+      `/events/${selectedEvent.id}`,
+      { Authorization: `Bearer ${token}` }
+    );
+
+    setSelectedEvent(null);
+    messageApi.success("Event deleted.");
+
+    mapInstanceRef.current?.fire("moveend");
+  } catch (error) {
+    const msg =
+      error instanceof Error
+        ? error.message
+        : "Failed to delete event";
+
+    messageApi.error(msg);
+  }
+};
 
 
   const handleSendMessage = () => {
@@ -589,11 +593,17 @@ export default function MapPage() {
 
     setJoiningEvent(true);
     try {
-      await apiService.post("/events/participants",
+      const response = await apiService.post<EventDTO>("/events/participants",
         { inviteCode: values.inviteCode, userId: Number(userId) },
         { Authorization: `Bearer ${token}` }
       );
       messageApi.success("You joined the event!");
+
+      mapInstanceRef.current?.flyTo({
+        center: [response.longitude, response.latitude],
+        zoom: 14,
+      });
+      mapInstanceRef.current?.fire("moveend");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to join event. Please check the invite code and try again.";
       messageApi.error(msg);
