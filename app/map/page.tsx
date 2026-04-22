@@ -1120,6 +1120,12 @@ export default function MapPage() {
                 <p style={{ margin: "2px 0 0 0", color: "#9ca3af" }}>No photos available</p>
               )}
             </div>
+            <Button
+              block
+              onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}
+            >
+              View Board
+            </Button>
             {/* later make it only possible for the creator to see the delete button... */}
               <Button onClick={() => handleDeleteEvent(selectedEvent)} danger block>
               Delete Event
