@@ -1120,11 +1120,11 @@ export default function MapPage() {
                 <p style={{ margin: "2px 0 0 0", color: "#9ca3af" }}>No photos available</p>
               )}
             </div>
-            {/* later make it only possible for the creator to see the delete button... */}
+            {isCreator && (
               <Button onClick={() => handleDeleteEvent(selectedEvent)} danger block>
               Delete Event
               </Button>
-            
+            )}
           </div>
         )}
       </Modal>
