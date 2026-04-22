@@ -82,7 +82,7 @@ reason).
 
 ---
 
-## Contributions Week 4 - [Begin Date] to [End Date]
+## Contributions Week 4 - [20.04.2026] to [26.04.2026]
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
@@ -94,8 +94,8 @@ reason).
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **semirIbra** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **semirIbra** | [21.04.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-server/commit/5b323c3ace5f2a8037dbba4c4265eb7d02cab79d] | [The backend provides an put method to update existing events allowing modification of fields such as title, description, end/start-time, location, category, privacy and images.] | [This enables event creators to keep event information up to date without recreating events, which is required for upcoming frontend editing functionality] |
+|                    | [22.04.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/c5bbf25b2fbd674a08be241df3dc1059628a4e0c] | [Clicking on an edit icon allows the event description to be edited by the event creator only.] | [This improves user control over event content and ensures that only authorized users (creators) can modify event information. In general this is useful for the creator if the description needs to be updated.] |
 
 
 ---
