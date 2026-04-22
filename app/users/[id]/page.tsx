@@ -1,23 +1,18 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { User } from "@/types/user";
 import { Button, Form, Input } from "antd";
 import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
-import { Client } from "@stomp/stompjs";
 
 const Profile: React.FC = () => {
   const router = useRouter();
   const params = useParams();
   const profileId = params?.id as string;
   const apiService = useApi();
-  const mapRef = useRef<HTMLDivElement | null>(null);
-  const stompClientRef = useRef<Client | null>(null);
-  
-
 
   const { value: token, clear: clearToken } = useLocalStorage<string>("token", "");
   const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");  
@@ -85,7 +80,6 @@ const Profile: React.FC = () => {
   const isOnline = user?.status === "ONLINE";
 
   const handleLogout = () => {
-    stompClientRef.current?.deactivate();
     setIsMounted(false);
     clearToken();
     clearUserId();
