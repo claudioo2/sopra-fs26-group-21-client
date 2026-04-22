@@ -1,26 +1,34 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { User } from "@/types/user";
 import { Button, Form, Input } from "antd";
 import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import { Client } from "@stomp/stompjs";
 
 const Profile: React.FC = () => {
   const router = useRouter();
   const params = useParams();
   const profileId = params?.id as string;
   const apiService = useApi();
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const stompClientRef = useRef<Client | null>(null);
+  
 
-  const { value: token } = useLocalStorage<string>("token", "");
-  const { value: userId } = useLocalStorage<string>("userId", "");
+
+  const { value: token, clear: clearToken } = useLocalStorage<string>("token", "");
+  const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");  
+  
 
   const [user, setUser] = useState<User | null>(null);
   const [editing, setEditing] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [form] = Form.useForm();
+  const [isFollowing, setIsFollowing] = useState(false);
+  
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
 
@@ -76,6 +84,18 @@ const Profile: React.FC = () => {
 
   const isOnline = user?.status === "ONLINE";
 
+  const handleLogout = () => {
+    stompClientRef.current?.deactivate();
+    setIsMounted(false);
+    clearToken();
+    clearUserId();
+    router.push("/login");
+  };
+
+  const handleFollowToggle = () => {
+  setIsFollowing((prev) => !prev);
+};
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -101,9 +121,27 @@ const Profile: React.FC = () => {
           onClick={() => router.push("/map")}
           style={{ color: "#fff", fontSize: 16 }}
         />
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
         <span style={{ color: "#fff", fontWeight: 600, fontSize: 17 }}>
           {user?.username ?? "Profile"}
         </span>
+
+        {!isOwnProfile && (
+          <Button
+            size="small"
+            onClick={handleFollowToggle}
+            style={{
+              backgroundColor: isFollowing ? "#1c1c1c" : "#3897f0",
+              borderColor: isFollowing ? "#333" : "#3897f0",
+              color: "#fff",
+              borderRadius: 8,
+              fontWeight: 600,
+            }}
+          >
+            {isFollowing ? "Following" : "Follow"}
+          </Button>
+        )}
+      </div>
         {isOwnProfile && !editing && (
           <Button
             type="text"
@@ -112,6 +150,8 @@ const Profile: React.FC = () => {
             style={{ color: "#fff", marginLeft: "auto" }}
           />
         )}
+
+
         {editing && (
           <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             <Button
@@ -206,9 +246,28 @@ const Profile: React.FC = () => {
             </Form.Item>
           </Form>
         )}
+        {isOwnProfile && (
+          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+          <Button
+            onClick={() => router.push(`/users/${profileId}/followers`)}
+            style={{
+              backgroundColor: "#1c1c1c",
+              borderColor: "#333",
+              color: "#fff",
+              borderRadius: 8,
+              fontWeight: 500,
+            }}
+          >  
+            View Followers
+          </Button>
+          <Button onClick={handleLogout} style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 8, fontWeight: 500 }}>
+                    Logout
+                  </Button>
+          </div>
+        )}
 
         {/* Divider */}
-        <div style={{ borderTop: "1px solid #1f1f1f", marginBottom: 24 }} />
+        <div style={{ borderTop: "1px solid #1f1f1f", marginBottom: 24, marginTop: 24 }} />
 
         {/* Back to map */}
         <Button
