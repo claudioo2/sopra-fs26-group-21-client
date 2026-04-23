@@ -6,6 +6,7 @@ import { App, Button, Modal, Input, Upload } from "antd";
 import { ArrowLeftOutlined, PlusOutlined, PictureOutlined, CommentOutlined, SmileOutlined, UploadOutlined } from "@ant-design/icons";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
+import type { UploadFile } from "antd/es/upload/interface";
 
 type PostType = "photo" | "comment" | "emoji";
 
@@ -38,7 +39,7 @@ export default function BoardPage() {
   const [postType, setPostType] = useState<PostType | null>(null);
   const [comment, setComment] = useState("");
   const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
-  const [fileList, setFileList] = useState<unknown[]>([]);
+  const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
