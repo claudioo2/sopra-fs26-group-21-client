@@ -38,7 +38,7 @@ export default function BoardPage() {
   const [postType, setPostType] = useState<PostType | null>(null);
   const [comment, setComment] = useState("");
   const [selectedEmoji, setSelectedEmoji] = useState<string | null>(null);
-  const [fileList, setFileList] = useState<any[]>([]);
+  const [fileList, setFileList] = useState<unknown[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
