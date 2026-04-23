@@ -1099,7 +1099,7 @@ export default function MapPage() {
             >
               View Board
             </Button>
-            // later make it only possible for the creator to see the delete button...
+            {/*later make it only possible for the creator to see the delete button... */}
               <Button onClick={() => handleDeleteEvent(selectedEvent)} danger block>
               Delete Event
               </Button>
