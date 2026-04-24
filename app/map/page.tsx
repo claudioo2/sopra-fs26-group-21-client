@@ -428,8 +428,8 @@ export default function MapPage() {
       setChatMessages([]);
     }
 
-    // Connect via WebSocket (STOMP over SockJS)
-    const wsUrl = getApiDomain().replace(/^http/, "ws") + "/ws";
+    // Connect via WebSocket (STOMP)
+    const wsUrl = getApiDomain().replace(/\/$/, "").replace(/^http/, "ws") + "/ws";
     const client = new Client({
       brokerURL: wsUrl,
       onConnect: () => {
@@ -619,7 +619,7 @@ export default function MapPage() {
     <main style={{ position: "relative", height: "100vh", display: "flex", flexDirection: "column" }}>
       {/* Top bar */}
       <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0 }}>Spontaneo  </h1>
+        <h1 style={{ margin: 0 }}>Map</h1>
         <Button
   type="primary"
   onClick={openPanel}
@@ -1003,7 +1003,7 @@ export default function MapPage() {
                   name="category"
                   rules={[{ required: true, message: "Category is required" }]}
                 >
-                  <Select mode= "multiple" placeholder="Select a category">
+                  <Select placeholder="Select a category">
                     {ALL_CATEGORIES.map((cat) => (
                       <Select.Option key={cat} value={cat}>
                         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
