@@ -1099,6 +1099,22 @@ export default function MapPage() {
                 </div>
               )}
             </div>
+            <div>
+              <span style={{ color: "#6b7280", fontSize: "12px" }}>Photos</span>
+              {selectedEvent.pictureUrls && selectedEvent.pictureUrls.length > 0 ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "6px" }}>
+                  {selectedEvent.pictureUrls.map((url, i) => (
+                    <img
+                      key={i}
+                      src={url}
+                      alt={`Event photo ${i + 1}`}
+                      style={{ width: "120px", height: "80px", objectFit: "cover", borderRadius: "6px" }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p style={{ margin: "2px 0 0 0", color: "#9ca3af" }}>No photos available</p>
+              )}
               {/* Join button — not creator and not yet a participant */}
             {!isCreator && !selectedEvent.isParticipant && (
               <Button type="primary" onClick={handleJoinEvent} loading={joiningEvent} block>
