@@ -8,6 +8,7 @@ import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segme
 import { LockOutlined, GlobalOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { EventCategory, EventDTO } from "@/types/event";
@@ -428,10 +429,10 @@ export default function MapPage() {
       setChatMessages([]);
     }
 
-    // Connect via WebSocket (STOMP)
-    const wsUrl = getApiDomain().replace(/\/$/, "").replace(/^http/, "ws") + "/ws";
+    // Connect via STOMP over SockJS
+    const sockJsUrl = getApiDomain().replace(/\/$/, "") + "/ws";
     const client = new Client({
-      brokerURL: wsUrl,
+      webSocketFactory: () => new SockJS(sockJsUrl),
       onConnect: () => {
         setStompConnected(true);
         client.subscribe(`/topic/chat/${event.id}`, (frame) => {
