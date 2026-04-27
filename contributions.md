@@ -90,8 +90,8 @@ reason).
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **claudioo2** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **claudioo2** | 24.04.26| https://github.com/claudioo2/sopra-fs26-group-21-server/commit/9d3218d48bfdb7bd121f29058ccaa3d6d03ed8b4 | Backend for multiple categories | Being able to have multiple categories for an event |
+|                    | 24.04.26   | https://github.com/claudioo2/sopra-fs26-group-21-client/commit/a1595b3ca9069626cad11aa42be0259f657a99f1| Frontend for multiple categories  | Being able to have multiple categories for an event |
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **semirIbra** | [21.04.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-server/commit/5b323c3ace5f2a8037dbba4c4265eb7d02cab79d] | [The backend provides an put method to update existing events allowing modification of fields such as title, description, end/start-time, location, category, privacy and images.] | [This enables event creators to keep event information up to date without recreating events, which is required for upcoming frontend editing functionality] |
