@@ -88,6 +88,7 @@ export default function MapPage() {
 
   const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
   const [myEventsOnly, setMyEventsOnly] = useState(false);
+  const [friendsOnly, setFriendsOnly] = useState(false);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
@@ -813,6 +814,25 @@ export default function MapPage() {
             >
               ★ My Events
             </button>
+
+            <button
+              onClick={() => setFriendsOnly((v) => !v)}
+              style={{
+                padding: "3px 11px",
+                borderRadius: "999px",
+                border: "2px solid #10b981",
+                backgroundColor: friendsOnly ? "#10b981" : "transparent",
+                color: friendsOnly ? "#fff" : "#10b981",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
+              }}
+            >
+              👥 Friends Only
+            </button>
+
 
             <div style={{ width: 1, height: 20, backgroundColor: "#d1d5db", margin: "0 2px", alignSelf: "center" }} />
 
