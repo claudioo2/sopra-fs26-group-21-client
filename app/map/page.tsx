@@ -13,6 +13,7 @@ import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { EventCategory, EventDTO } from "@/types/event";
 import { getApiDomain } from "@/utils/domain";
+import { User } from "@/types/user";
 
 const CATEGORY_COLORS: Record<EventCategory, string> = {
   SPORTS:  "#f97316",
@@ -86,8 +87,11 @@ export default function MapPage() {
   const chatEventRef = useRef<EventDTO | null>(null);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
+  const [user, setUser] = useState<User | null>(null);
+  const [followedUserIds, setFollowedUserIds] = useState<number[]>([]);
   const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
   const [myEventsOnly, setMyEventsOnly] = useState(false);
+  const [friendsOnly, setFriendsOnly] = useState(false);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
@@ -147,6 +151,32 @@ export default function MapPage() {
     };
     validate();
   }, [token, apiService, router, clearToken, isMounted]);
+
+
+  useEffect(() => {
+    if (!userId || !token) return;
+
+    const fetchUser = async () => {
+      try {
+        const data = await apiService.get<User>(
+          `/users/${userId}`,
+          { Authorization: `Bearer ${token}` }
+        );
+
+        const ids = (data.following ?? [])
+        .map(f => f.id)
+        .filter((id): id is string => id !== null)
+        .map(id => Number(id));
+
+        setFollowedUserIds(ids);
+
+      } catch (err) {
+        console.error("Failed to fetch user", err);
+      }
+    };
+
+    fetchUser();
+ }, [userId, token, apiService]);
 
   // Map initialization — runs after auth guard confirms isMounted + token
   useEffect(() => {
@@ -292,6 +322,14 @@ export default function MapPage() {
           const uid = Number(userId);
           events = events.filter(e => e.creatorId === uid || e.participantIds?.includes(uid));
         }
+        console.log("Fetched followedUsersIds:", followedUserIds);
+        if (friendsOnly) {
+          events = events.filter(e =>
+            (e.participantIds ?? []).some(id =>
+              followedUserIds.includes(id)
+            )
+          );
+        }
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
         events.forEach((event) => {
@@ -330,7 +368,7 @@ export default function MapPage() {
       }
     };
     fetchAndRefresh();
-  }, [activeCategories, myEventsOnly, token, apiService, userId]);
+  }, [activeCategories, myEventsOnly, friendsOnly, token, apiService, userId]);
 
   const toggleCategory = (cat: EventCategory) => {
     setActiveCategories((prev) => {
@@ -846,6 +884,25 @@ export default function MapPage() {
             >
               ★ My Events
             </button>
+
+            <button
+              onClick={() => setFriendsOnly((v) => !v)}
+              style={{
+                padding: "3px 11px",
+                borderRadius: "999px",
+                border: "2px solid #10b981",
+                backgroundColor: friendsOnly ? "#10b981" : "transparent",
+                color: friendsOnly ? "#fff" : "#10b981",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
+              }}
+            >
+              👥 Friends Only
+            </button>
+
 
             <div style={{ width: 1, height: 20, backgroundColor: "#d1d5db", margin: "0 2px", alignSelf: "center" }} />
 
