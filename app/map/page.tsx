@@ -13,6 +13,7 @@ import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { EventCategory, EventDTO } from "@/types/event";
 import { getApiDomain } from "@/utils/domain";
+import { User } from "@/types/user";
 
 const CATEGORY_COLORS: Record<EventCategory, string> = {
   SPORTS:  "#f97316",
@@ -86,6 +87,8 @@ export default function MapPage() {
   const chatEventRef = useRef<EventDTO | null>(null);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
+  const [user, setUser] = useState<User | null>(null);
+  const [followedUserIds, setFollowedUserIds] = useState<number[]>([]);
   const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
   const [myEventsOnly, setMyEventsOnly] = useState(false);
   const [friendsOnly, setFriendsOnly] = useState(false);
@@ -145,6 +148,32 @@ export default function MapPage() {
     };
     validate();
   }, [token, apiService, router, clearToken, isMounted]);
+
+
+  useEffect(() => {
+    if (!userId || !token) return;
+
+    const fetchUser = async () => {
+      try {
+        const data = await apiService.get<User>(
+          `/users/${userId}`,
+          { Authorization: `Bearer ${token}` }
+        );
+
+        const ids = (data.following ?? [])
+        .map(f => f.id)
+        .filter((id): id is string => id !== null)
+        .map(id => Number(id));
+
+        setFollowedUserIds(ids);
+
+      } catch (err) {
+        console.error("Failed to fetch user", err);
+      }
+    };
+
+    fetchUser();
+ }, [userId, token, apiService]);
 
   // Map initialization — runs after auth guard confirms isMounted + token
   useEffect(() => {
@@ -290,6 +319,14 @@ export default function MapPage() {
           const uid = Number(userId);
           events = events.filter(e => e.creatorId === uid || e.participantIds?.includes(uid));
         }
+        console.log("Fetched followedUsersIds:", followedUserIds);
+        if (friendsOnly) {
+          events = events.filter(e =>
+            (e.participantIds ?? []).some(id =>
+              followedUserIds.includes(id)
+            )
+          );
+        }
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
         events.forEach((event) => {
@@ -328,7 +365,7 @@ export default function MapPage() {
       }
     };
     fetchAndRefresh();
-  }, [activeCategories, myEventsOnly, token, apiService, userId]);
+  }, [activeCategories, myEventsOnly, friendsOnly, token, apiService, userId]);
 
   const toggleCategory = (cat: EventCategory) => {
     setActiveCategories((prev) => {
