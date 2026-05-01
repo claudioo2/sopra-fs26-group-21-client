@@ -93,6 +93,9 @@ export default function MapPage() {
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
   const [leavingEvent, setLeavingEvent] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
+  const [savingEdit, setSavingEdit] = useState(false);
   const [addressQuery, setAddressQuery] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
 
@@ -484,6 +487,36 @@ export default function MapPage() {
       messageApi.error(msg);
     } finally {
       setLeavingEvent(false);
+    }
+  };
+
+  const handleUpdateField = async (field: keyof EventDTO, value: any) => {
+    if (!selectedEvent) return;
+
+    setSavingEdit(true);
+
+    try {
+      const updated = await apiService.put<EventDTO>(
+        `/events/${selectedEvent.id}`,
+        {
+          [field]: value,
+        },
+        { Authorization: `Bearer ${token}` }
+      );
+
+      setSelectedEvent((prev) =>
+        prev ? { ...prev, [field]: value } : prev
+      );
+
+      setEditingField(null);
+      setEditValue("");
+      messageApi.success("Event updated");
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Update failed";
+      messageApi.error(msg);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -1068,7 +1101,47 @@ export default function MapPage() {
             )}
             <div>
               <span style={{ color: "#6b7280", fontSize: "12px" }}>Description</span>
-              <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.description ?? "—"}</p>
+              {editingField === "description" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "4px" }}>
+                  <Input.TextArea
+                    autoFocus
+                    rows={3}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                  />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <Button
+                      type="primary"
+                      loading={savingEdit}
+                      onClick={() => handleUpdateField("description", editValue)}
+                    >
+                      Save
+                    </Button>
+                    <Button onClick={() => setEditingField(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <p style={{ margin: 0, color: "#111827" }}>
+                    {selectedEvent.description ?? "—"}
+                  </p>
+
+                  {isCreator && (
+                    <Button
+                      size="small"
+                      type="text"
+                      onClick={() => {
+                        setEditingField("description");
+                        setEditValue(selectedEvent.description ?? "");
+                      }}
+                    >
+                      ✏️
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", gap: "24px" }}>
               <div>
@@ -1142,11 +1215,11 @@ export default function MapPage() {
             >
               View Board
             </Button>
-            {/* later make it only possible for the creator to see the delete button... */}
+            {isCreator && (
               <Button onClick={() => handleDeleteEvent(selectedEvent)} danger block>
               Delete Event
               </Button>
-            
+            )}
           </div>
         )}
       </Modal>
