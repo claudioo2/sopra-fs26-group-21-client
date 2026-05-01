@@ -86,8 +86,8 @@ reason).
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
-| **GabrielVuattoux** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **GabrielVuattoux** | 24.04.2026   | [f394b54606cf500e3eb1e39d461f52a3dc54d9ad](https://github.com/claudioo2/sopra-fs26-group-21-server/commit/f394b54606cf500e3eb1e39d461f52a3dc54d9ad) | Websocket adapatation for Vercel | Websocket was working locally but is not supported in Google Cloud, so I used SockJS to solve that in case the serveur not responds to HTTP request from websocket |
+|                    | 23.04.2026  | https://github.com/claudioo2/sopra-fs26-group-21-server/commit/6b29f929e60f60f80954c23595e32ce52bf5e1e4 | Merge branch 'event-map-update': auth refactoring + Post feature | we had to merge 19 files about authentification and post features |
 | **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **claudioo2** | 24.04.26| https://github.com/claudioo2/sopra-fs26-group-21-server/commit/9d3218d48bfdb7bd121f29058ccaa3d6d03ed8b4 | Backend for multiple categories | Being able to have multiple categories for an event |
