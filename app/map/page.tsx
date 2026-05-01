@@ -87,7 +87,6 @@ export default function MapPage() {
   const chatEventRef = useRef<EventDTO | null>(null);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
-  const [user, setUser] = useState<User | null>(null);
   const [followedUserIds, setFollowedUserIds] = useState<number[]>([]);
   const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
   const [myEventsOnly, setMyEventsOnly] = useState(false);
@@ -319,14 +318,20 @@ export default function MapPage() {
           const uid = Number(userId);
           events = events.filter(e => e.creatorId === uid || e.participantIds?.includes(uid));
         }
-        console.log("Fetched followedUsersIds:", followedUserIds);
+        
         if (friendsOnly) {
           events = events.filter(e =>
             (e.participantIds ?? []).some(id =>
               followedUserIds.includes(id)
             )
           );
+          if (followedUserIds.length === 0) {
+            messageApi.info("You are not following anyone yet.");
+          } else if (events.length === 0) {
+            messageApi.info("None of your friends are attending any local events.");
+          }
         }
+
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
         events.forEach((event) => {
