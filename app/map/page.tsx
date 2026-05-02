@@ -226,7 +226,10 @@ export default function MapPage() {
 
       wrapper.addEventListener("click", () => setSelectedEvent(event));
 
-      const marker = new mapboxgl.Marker(wrapper)
+      const marker = new mapboxgl.Marker({
+        element: wrapper,
+        anchor: "bottom",
+      })
         .setLngLat([event.longitude, event.latitude])
         .addTo(map);
 
@@ -361,8 +364,12 @@ export default function MapPage() {
                 </g>
               </svg>`;
             wrapper.addEventListener("click", () => setSelectedEvent(event));
-            const marker = new mapboxgl.Marker(wrapper).setLngLat([event.longitude, event.latitude]).addTo(map);
-            markersRef.current.push(marker);
+            const marker = new mapboxgl.Marker({
+              element: wrapper,
+              anchor: "bottom",
+            })
+              .setLngLat([event.longitude, event.latitude]).addTo(map);
+              markersRef.current.push(marker);
           }
         });
       } catch (error) {
