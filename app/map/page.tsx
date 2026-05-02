@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal, Select } from "antd";
@@ -78,6 +78,7 @@ const DEFAULT_CENTER: [number, number] = [13.405, 52.52]; // Berlin fallback
 
 export default function MapPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const apiService = useApi();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
@@ -496,6 +497,23 @@ export default function MapPage() {
     stompClientRef.current = client;
     setChatOpen(true);
   };
+
+  // Auto-open chat when navigated here with ?openChat=eventId
+  useEffect(() => {
+    if (!isMounted || !token) return;
+    const eventId = searchParams?.get("openChat");
+    if (!eventId) return;
+    const fetchAndOpen = async () => {
+      try {
+        const event = await apiService.get<EventDTO>(`/events/${eventId}`, { Authorization: `Bearer ${token}` });
+        handleOpenChat(event);
+      } catch {
+        // silently ignore if event not found
+      }
+    };
+    fetchAndOpen();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMounted, token]);
 
   const handleCloseChat = () => {
     stompClientRef.current?.deactivate();

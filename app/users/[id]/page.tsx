@@ -6,8 +6,13 @@ import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { User } from "@/types/user";
 import { EventDTO, EventCategory } from "@/types/event";
-import { Button, Form, Input } from "antd";
+import { Button, Form, Input, Modal } from "antd";
 import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
+
+const CATEGORY_LABELS: Record<EventCategory, string> = {
+  SPORTS: "Sports", MUSIC: "Music", FOOD: "Food", ART: "Art",
+  SOCIAL: "Social", OUTDOOR: "Outdoor", PARTY: "Party", OTHER: "Other",
+};
 
 const CATEGORY_COLORS: Record<EventCategory, string> = {
   SPORTS: "#f97316", MUSIC: "#a855f7", FOOD: "#f43f5e", ART: "#ec4899",
@@ -29,6 +34,7 @@ const Profile: React.FC = () => {
   const [isMounted, setIsMounted] = useState(false);
   const [form] = Form.useForm();
   const [isFollowing, setIsFollowing] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
 
@@ -179,7 +185,7 @@ const Profile: React.FC = () => {
               {events.map((event) => (
                 <div
                   key={event.id}
-                  onClick={() => router.push(`/events/${event.id}/board?title=${encodeURIComponent(event.title)}`)}
+                  onClick={() => setSelectedEvent(event)}
                   style={{ backgroundColor: "#16181D", borderRadius: 12, padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: "1px solid #2e3138" }}
                 >
                   {event.category && (
@@ -207,6 +213,71 @@ const Profile: React.FC = () => {
           Back to Map
         </Button>
       </div>
+
+      {/* Event detail modal */}
+      <Modal
+        open={selectedEvent !== null}
+        onCancel={() => setSelectedEvent(null)}
+        footer={null}
+        title={<span style={{ color: "#111827" }}>{selectedEvent?.title}</span>}
+        styles={{ header: { color: "#111827" } }}
+        width={480}
+      >
+        {selectedEvent && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {selectedEvent.category && (
+              <div>
+                <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: "999px", backgroundColor: CATEGORY_COLORS[selectedEvent.category], color: "#fff", fontSize: "12px", fontWeight: 600 }}>
+                  {CATEGORY_LABELS[selectedEvent.category]}
+                </span>
+              </div>
+            )}
+            <div>
+              <span style={{ color: "#6b7280", fontSize: "12px" }}>Description</span>
+              <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.description ?? "—"}</p>
+            </div>
+            <div style={{ display: "flex", gap: "24px" }}>
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>Organizer</span>
+                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.creatorUsername ?? "—"}</p>
+              </div>
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>Participants</span>
+                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.participantCount ?? 0}</p>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "24px" }}>
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>Start</span>
+                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.startTime).toLocaleString()}</p>
+              </div>
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>End</span>
+                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.endTime).toLocaleString()}</p>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <Button type="primary" block onClick={() => router.push(`/map?openChat=${selectedEvent.id}`)}>
+                Join Chat
+              </Button>
+              <Button danger block onClick={async () => {
+                try {
+                  await apiService.delete(`/events/${selectedEvent.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
+                  setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
+                  setSelectedEvent(null);
+                } catch (error) {
+                  alert(error instanceof Error ? error.message : "Failed to leave event");
+                }
+              }}>
+                Leave Event
+              </Button>
+            </div>
+            <Button block onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}>
+              View Board
+            </Button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
