@@ -116,61 +116,194 @@ export default function MapPage() {
   const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");
   const [isMounted, setIsMounted] = useState(false);
 
-  const createEventMarker = (event: EventDTO, map: mapboxgl.Map) => {
-      const color = event.category ? CATEGORY_COLORS[event.category] : "#94a3b8";
-      const icon = event.category ? CATEGORY_ICONS[event.category] : CATEGORY_ICONS.OTHER;
+  const eventsByIdRef = useRef<Map<number, EventDTO>>(new Map());
+  const pulseAnimationRef = useRef<number | null>(null);
 
-      const isOngoing = (() => {
+  const renderEventMarkers = async (map: mapboxgl.Map, events: EventDTO[]) => {
+    eventsByIdRef.current = new Map(events.map((event) => [event.id, event]));
+
+    await loadCategoryPinIcons(map);
+
+    const geojson: GeoJSON.FeatureCollection<GeoJSON.Point> = {
+      type: "FeatureCollection",
+      features: events.map((event) => {
         const now = new Date();
-        return new Date(event.startTime) <= now && now <= new Date(event.endTime);
-      })();
 
-      const wrapper = document.createElement("div");
-      wrapper.style.cssText = `
-        position: relative;
-        width: 48px;
-        height: 62px;
-        cursor: pointer;
-        pointer-events: auto;
-      `;
+        const isOngoing =
+          new Date(event.startTime) <= now && now <= new Date(event.endTime);
+        
+        return {
+            type: "Feature",
+            geometry: {
+              type: "Point", 
+              coordinates: [Number(event.longitude), Number(event.latitude)],
+            },
+          properties: {
+            eventId: event.id,
+            icon: `pin-${event.category ?? "OTHER"}`,
+            color: event.category ? CATEGORY_COLORS[event.category] : "#94a3b8",
+            isOngoing,
+          },
+        };
+      }),
+    }
 
-      if (isOngoing) {
-        const pulse = document.createElement("div");
-        pulse.className = "marker-pulse-ring";
-        pulse.style.cssText = `
-          position: absolute;
-          left: 24px;
-          top: 24px;
-          transform: translate(-50%, -50%);
-          background-color: ${color};
-          opacity: 0.4;
-          pointer-events: none;
-        `;
-        wrapper.appendChild(pulse);
+    const existingSource = map.getSource("events-source") as
+      | mapboxgl.GeoJSONSource
+      | undefined;
+
+    if (existingSource) {
+      existingSource.setData(geojson);
+      return;
+    }
+
+    map.addSource("events-source", {
+      type: "geojson",
+      data: geojson,
+    });
+
+    map.addLayer({
+      id: "events-pulse",
+      type: "circle",
+      source: "events-source",
+      /*filter: ["==", ["get", "isOngoing"], true], */
+      paint: {
+        "circle-radius": 24,
+        "circle-color": ["get", "color"],
+        "circle-opacity": 0.35,
+        "circle-translate": [0, -36],
+      },
+    });
+
+    map.addLayer({
+      id: "events-hitbox",
+      type: "circle",
+      source: "events-source",
+      paint: {
+        "circle-radius": 30,
+        "circle-color": "#000000",
+        "circle-opacity": 0,
+        "circle-translate": [0, -36],
+      },
+    });
+
+    map.addLayer({
+      id: "events-pins",
+      type: "symbol",
+      source: "events-source",
+      layout: {
+        "icon-image": ["get", "icon"],
+        "icon-size": 1.8,
+        "icon-anchor": "bottom",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    });
+
+
+    if (pulseAnimationRef.current !== null) {
+      cancelAnimationFrame(pulseAnimationRef.current);
+      pulseAnimationRef.current = null;
+    }
+
+
+    if (pulseAnimationRef.current === null) {
+      const animatePulse = () => {
+        if (!map.getLayer("events-pulse")) {
+          pulseAnimationRef.current = null;
+          return;
+        }
+
+        const time = Date.now() / 1000;
+        const progress = (Math.sin(time * 3) + 1) / 2;
+
+        const radius = 18 + progress * 18;
+        const opacity = 0.45 - progress * 0.35;
+
+        map.setPaintProperty("events-pulse", "circle-radius", radius);
+        map.setPaintProperty("events-pulse", "circle-opacity", opacity);
+
+        pulseAnimationRef.current = requestAnimationFrame(animatePulse);
+      };
+
+      pulseAnimationRef.current = requestAnimationFrame(animatePulse);
+    }
+
+    map.on("click", "events-hitbox", (e) => {
+      console.log("HITBOX CLICKED");
+      console.log("features:", e.features);
+
+      const feature = e.features?.[0];
+      const eventId = feature?.properties?.eventId;
+
+      console.log("raw eventId:", eventId);
+      console.log("eventsById keys:", Array.from(eventsByIdRef.current.keys()));
+
+      if (eventId == null) {
+        console.log("No eventId found on clicked feature");
+        return;
       }
 
-      const markerSvg = document.createElement("div");
-      markerSvg.style.cssText = `
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 48px;
-        height: 62px;
-        pointer-events: none;
-      `;
+      const event = eventsByIdRef.current.get(Number(eventId));
 
-      markerSvg.innerHTML = `
-        <svg 
-          xmlns="http://www.w3.org/2000/svg" 
-          viewBox="0 0 48 62" 
-          width="48" 
-          height="62" 
-          style="display:block; filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35))"
-        >
-          <circle cx="24" cy="24" r="22" fill="${color}"/>
-          <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
-          <polygon points="24,62 16,40 32,40" fill="${color}"/>
-          <g transform="translate(12, 12)">
+      console.log("matched event:", event);
+
+      if (event) {
+        setSelectedEvent(event);
+      }
+    });
+
+    
+
+    map.on("click", "events-hitbox", (e) => {
+      const feature = e.features?.[0];
+      const id = feature?.properties?.id;
+
+      if (id == null) return;
+
+      const event = eventsByIdRef.current.get(Number(id));
+      if (event) {
+        setSelectedEvent(event);
+      }
+    });
+
+    map.on("mouseenter", "events-hitbox", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "events-hitbox", () => {
+      map.getCanvas().style.cursor = "";
+    });
+  };
+
+  const loadCategoryPinIcons = async (map: mapboxgl.Map) => {
+    const categories = Object.keys(CATEGORY_ICONS) as Array<keyof typeof CATEGORY_ICONS>;
+
+    for (const category of categories) {
+      const imageId = `pin-${category}`;
+
+      if (map.hasImage(imageId)) continue;
+
+      const color =
+        category in CATEGORY_COLORS
+          ? CATEGORY_COLORS[category as EventCategory]
+          : "#94a3b8";
+
+      const icon = CATEGORY_ICONS[category];
+
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="62" viewBox="0 0 48 62">
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.35)"/>
+          </filter>
+
+          <g filter="url(#shadow)">
+            <circle cx="24" cy="24" r="22" fill="${color}"/>
+            <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+            <polygon points="24,62 15,40 33,40" fill="${color}"/>
+          </g>
+
+          <g transform="translate(12, 12)" fill="white" stroke="white">
             <svg viewBox="0 0 24 24" width="24" height="24">
               ${icon}
             </svg>
@@ -178,19 +311,20 @@ export default function MapPage() {
         </svg>
       `;
 
-      wrapper.appendChild(markerSvg);
+      const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 
-      wrapper.addEventListener("click", () => setSelectedEvent(event));
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
 
-      const marker = new mapboxgl.Marker({
-        element: wrapper,
-        anchor: "bottom",
-      })
-        .setLngLat([Number(event.longitude), Number(event.latitude)])
-        .addTo(map);
-
-      markersRef.current.push(marker);
-    };
+      if (!map.hasImage(imageId)) {
+        map.addImage(imageId, image, { pixelRatio: 2 });
+      }
+    }
+  };
 
   // Resize the map after any panel opens or closes.
   // useEffect fires after React commits the DOM change, so the map div already
@@ -278,14 +412,13 @@ export default function MapPage() {
         }
         const events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
 
-        markersRef.current.forEach((m) => m.remove());
-        markersRef.current = [];
+        const visibleEvents = events.filter(
+          (event) =>
+            !event.isPrivate || event.participantIds?.includes(Number(userId))
+        );
 
-        events.forEach((event) => {
-          if (!event.isPrivate || event.participantIds?.includes(Number(userId))) {
-            createEventMarker(event, map);
-          }
-        });
+        await renderEventMarkers(map, visibleEvents);
+
       } catch (error) {
         console.error("Failed to fetch events:", error);
       }
@@ -381,14 +514,12 @@ export default function MapPage() {
 
         if (cancelled) return;
 
-        markersRef.current.forEach((m) => m.remove());
-        markersRef.current = [];
+        const visibleEvents = events.filter(
+          (event) =>
+            !event.isPrivate || event.participantIds?.includes(Number(userId))
+        );
 
-        events.forEach((event) => {
-          if (!event.isPrivate || event.participantIds?.includes(Number(userId))) {
-            createEventMarker(event, map);
-          }
-        });
+        await renderEventMarkers(map, visibleEvents);
       } catch (error) {
         console.error("Failed to refresh events:", error);
       }
