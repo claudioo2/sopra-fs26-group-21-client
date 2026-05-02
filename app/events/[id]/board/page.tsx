@@ -33,8 +33,10 @@ export default function BoardPage() {
   const { message: messageApi } = App.useApp();
   const apiService = useApi();
   const { value: token } = useLocalStorage<string>("token", "");
+  const { value: userId } = useLocalStorage<string>("userId", "");
 
   const [posts, setPosts] = useState<PostGetDTO[]>([]);
+  const [canPost, setCanPost] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [postType, setPostType] = useState<PostType | null>(null);
   const [comment, setComment] = useState("");
@@ -43,12 +45,21 @@ export default function BoardPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !userId) return;
     apiService
       .get<PostGetDTO[]>(`/events/${eventId}/posts`, { Authorization: `Bearer ${token}` })
       .then(setPosts)
       .catch(() => {});
-  }, [token, eventId, apiService]);
+    apiService
+      .get<{ creatorId: number | null; participantIds: number[] | null }>(`/events/${eventId}`, { Authorization: `Bearer ${token}` })
+      .then((event) => {
+        const uid = Number(userId);
+        const isCreator = event.creatorId === uid;
+        const isParticipant = event.participantIds?.includes(uid) ?? false;
+        setCanPost(isCreator || isParticipant);
+      })
+      .catch(() => {});
+  }, [token, userId, eventId, apiService]);
 
   function openModal() {
     setPostType(null);
@@ -128,14 +139,16 @@ export default function BoardPage() {
           {eventTitle}
         </h1>
 
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          style={{ backgroundColor: "#6b7280", borderColor: "#6b7280" }}
-          onClick={openModal}
-        >
-          Add Post
-        </Button>
+        {canPost && (
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            style={{ backgroundColor: "#6b7280", borderColor: "#6b7280" }}
+            onClick={openModal}
+          >
+            Add Post
+          </Button>
+        )}
       </header>
 
       <div style={{ padding: "24px", maxWidth: "900px", margin: "0 auto", display: "flex", flexWrap: "wrap", gap: "16px" }}>

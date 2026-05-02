@@ -497,6 +497,23 @@ export default function MapPage() {
     setChatOpen(true);
   };
 
+  // Auto-open chat when navigated here with ?openChat=eventId
+  useEffect(() => {
+    if (!isMounted || !token) return;
+    const eventId = new URLSearchParams(window.location.search).get("openChat");
+    if (!eventId) return;
+    const fetchAndOpen = async () => {
+      try {
+        const event = await apiService.get<EventDTO>(`/events/${eventId}`, { Authorization: `Bearer ${token}` });
+        handleOpenChat(event);
+      } catch {
+        // silently ignore if event not found
+      }
+    };
+    fetchAndOpen();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMounted, token]);
+
   const handleCloseChat = () => {
     stompClientRef.current?.deactivate();
     stompClientRef.current = null;
