@@ -489,7 +489,10 @@ export default function MapPage() {
     }
   };
 
-  const handleUpdateField = async (field: keyof EventDTO, value: any) => {
+  const handleUpdateField = async <K extends keyof EventDTO>(
+    field: K,
+    value: EventDTO[K]
+  ) => {
     if (!selectedEvent) return;
 
     setSavingEdit(true);
@@ -504,7 +507,7 @@ export default function MapPage() {
       );
 
       setSelectedEvent((prev) =>
-        prev ? { ...prev, [field]: value } : prev
+        prev ? { ...prev, ...updated } : prev
       );
 
       setEditingField(null);
