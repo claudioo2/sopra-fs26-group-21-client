@@ -311,6 +311,7 @@ export default function MapPage() {
     if (!mapInstanceRef.current || !token) return;
     const map = mapInstanceRef.current;
     const center = mapCenterRef.current;
+    let cancelled = false;
     const fetchAndRefresh = async () => {
       let url = `/events?longitude=${center[0]}&latitude=${center[1]}&radius=20`;
       if (activeCategories.size > 0) {
@@ -330,6 +331,7 @@ export default function MapPage() {
             )
           );
         }
+        if (cancelled) return;
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
         events.forEach((event) => {
@@ -368,6 +370,7 @@ export default function MapPage() {
       }
     };
     fetchAndRefresh();
+    return () => { cancelled = true; };
   }, [activeCategories, myEventsOnly, friendsOnly, token, apiService, userId]);
 
   const toggleCategory = (cat: EventCategory) => {
@@ -729,7 +732,7 @@ export default function MapPage() {
       </div>
 
 
-      <div style={{ flex: 1, display: "flex", position: "relative" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "flex", position: "relative", overflow: "hidden" }}>
         {/* Chat panel — left side */}
         {chatOpen && chatEventRef.current && (
           <div
