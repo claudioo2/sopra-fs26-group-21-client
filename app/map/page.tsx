@@ -531,7 +531,7 @@ export default function MapPage() {
     }
   };
 
-  const handleUpdateField = async (field: keyof EventDTO, value: any) => {
+  const handleUpdateField = async (field: keyof EventDTO, value: EventDTO[keyof EventDTO]) => {
     if (!selectedEvent) return;
 
     setSavingEdit(true);
