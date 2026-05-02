@@ -116,6 +116,82 @@ export default function MapPage() {
   const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");
   const [isMounted, setIsMounted] = useState(false);
 
+  const createEventMarker = (event: EventDTO, map: mapboxgl.Map) => {
+      const color = event.category ? CATEGORY_COLORS[event.category] : "#94a3b8";
+      const icon = event.category ? CATEGORY_ICONS[event.category] : CATEGORY_ICONS.OTHER;
+
+      const isOngoing = (() => {
+        const now = new Date();
+        return new Date(event.startTime) <= now && now <= new Date(event.endTime);
+      })();
+
+      const wrapper = document.createElement("div");
+      wrapper.style.cssText = `
+        position: relative;
+        width: 48px;
+        height: 62px;
+        cursor: pointer;
+        pointer-events: auto;
+      `;
+
+      if (isOngoing) {
+        const pulse = document.createElement("div");
+        pulse.className = "marker-pulse-ring";
+        pulse.style.cssText = `
+          position: absolute;
+          left: 24px;
+          top: 24px;
+          transform: translate(-50%, -50%);
+          background-color: ${color};
+          opacity: 0.4;
+          pointer-events: none;
+        `;
+        wrapper.appendChild(pulse);
+      }
+
+      const markerSvg = document.createElement("div");
+      markerSvg.style.cssText = `
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 48px;
+        height: 62px;
+        pointer-events: none;
+      `;
+
+      markerSvg.innerHTML = `
+        <svg 
+          xmlns="http://www.w3.org/2000/svg" 
+          viewBox="0 0 48 62" 
+          width="48" 
+          height="62" 
+          style="display:block; filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35))"
+        >
+          <circle cx="24" cy="24" r="22" fill="${color}"/>
+          <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+          <polygon points="24,62 16,40 32,40" fill="${color}"/>
+          <g transform="translate(12, 12)">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+              ${icon}
+            </svg>
+          </g>
+        </svg>
+      `;
+
+      wrapper.appendChild(markerSvg);
+
+      wrapper.addEventListener("click", () => setSelectedEvent(event));
+
+      const marker = new mapboxgl.Marker({
+        element: wrapper,
+        anchor: "bottom",
+      })
+        .setLngLat([Number(event.longitude), Number(event.latitude)])
+        .addTo(map);
+
+      markersRef.current.push(marker);
+    };
+
   // Resize the map after any panel opens or closes.
   // useEffect fires after React commits the DOM change, so the map div already
   // has its new dimensions when resize() is called.
@@ -191,50 +267,7 @@ export default function MapPage() {
 
     mapboxgl.accessToken = accessToken;
 
-    const createEventMarker = (event: EventDTO, map: mapboxgl.Map) => {
-      const color = event.category ? CATEGORY_COLORS[event.category] : "#94a3b8";
-      const icon = event.category ? CATEGORY_ICONS[event.category] : CATEGORY_ICONS.OTHER;
-
-      const isOngoing = (() => {
-        const now = new Date();
-        return new Date(event.startTime) <= now && now <= new Date(event.endTime);
-      })();
-
-      const wrapper = document.createElement("div");
-      wrapper.style.cssText = "position:relative; width:48px; height:62px; cursor:pointer;";
-
-      if (isOngoing) {
-        const pulse = document.createElement("div");
-        pulse.className = "marker-pulse-ring";
-        pulse.style.backgroundColor = color;
-        pulse.style.opacity = "0.4";
-        wrapper.appendChild(pulse);
-      }
-
-      wrapper.innerHTML += `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 62" width="48" height="62" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35))">
-          <circle cx="24" cy="24" r="22" fill="${color}"/>
-          <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
-          <polygon points="24,58 16,40 32,40" fill="${color}"/>
-          <g transform="translate(12, 12)">
-            <svg viewBox="0 0 24 24" width="24" height="24">
-              ${icon}
-            </svg>
-          </g>
-        </svg>
-      `;
-
-      wrapper.addEventListener("click", () => setSelectedEvent(event));
-
-      const marker = new mapboxgl.Marker({
-        element: wrapper,
-        anchor: "bottom",
-      })
-        .setLngLat([event.longitude, event.latitude])
-        .addTo(map);
-
-      markersRef.current.push(marker);
-    };
+    
 
     const fetchAndDisplayEvents = async (map: mapboxgl.Map, center: [number, number], categories: Set<EventCategory>) => {
       try {
@@ -312,73 +345,69 @@ export default function MapPage() {
   // Re-fetch markers when category filters or myEventsOnly change
   useEffect(() => {
     if (!mapInstanceRef.current || !token) return;
+
     const map = mapInstanceRef.current;
     const center = mapCenterRef.current;
     let cancelled = false;
+
     const fetchAndRefresh = async () => {
       let url = `/events?longitude=${center[0]}&latitude=${center[1]}&radius=20`;
+
       if (activeCategories.size > 0) {
-        activeCategories.forEach((cat) => { url += `&categories=${cat}`; });
+        activeCategories.forEach((cat) => {
+          url += `&categories=${cat}`;
+        });
       }
+
       try {
-        let events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
+        let events = await apiService.get<EventDTO[]>(url, {
+          Authorization: `Bearer ${token}`,
+        });
+
         if (myEventsOnly) {
           const uid = Number(userId);
-          events = events.filter(e => e.creatorId === uid || e.participantIds?.includes(uid));
-        }
-        console.log("Fetched followedUsersIds:", followedUserIds);
-        if (friendsOnly) {
-          events = events.filter(e =>
-            (e.participantIds ?? []).some(id =>
-              followedUserIds.includes(id)
-            )
+          events = events.filter(
+            (e) => e.creatorId === uid || e.participantIds?.includes(uid)
           );
         }
+
+        console.log("Fetched followedUsersIds:", followedUserIds);
+
+        if (friendsOnly) {
+          events = events.filter((e) =>
+            (e.participantIds ?? []).some((id) => followedUserIds.includes(id))
+          );
+        }
+
         if (cancelled) return;
+
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
+
         events.forEach((event) => {
           if (!event.isPrivate || event.participantIds?.includes(Number(userId))) {
-            const color = event.category ? CATEGORY_COLORS[event.category] : "#94a3b8";
-            const icon = event.category ? CATEGORY_ICONS[event.category] : CATEGORY_ICONS.OTHER;
-            const isOngoing = (() => {
-              const now = new Date();
-              return new Date(event.startTime) <= now && now <= new Date(event.endTime);
-            })();
-            const wrapper = document.createElement("div");
-            wrapper.style.cssText = "position:relative; width:48px; height:62px; cursor:pointer;";
-            if (isOngoing) {
-              const pulse = document.createElement("div");
-              pulse.className = "marker-pulse-ring";
-              pulse.style.backgroundColor = color;
-              pulse.style.opacity = "0.4";
-              wrapper.appendChild(pulse);
-            }
-            wrapper.innerHTML += `
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 62" width="48" height="62" style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.35))">
-                <circle cx="24" cy="24" r="22" fill="${color}"/>
-                <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
-                <polygon points="24,58 16,40 32,40" fill="${color}"/>
-                <g transform="translate(12, 12)">
-                  <svg viewBox="0 0 24 24" width="24" height="24">${icon}</svg>
-                </g>
-              </svg>`;
-            wrapper.addEventListener("click", () => setSelectedEvent(event));
-            const marker = new mapboxgl.Marker({
-              element: wrapper,
-              anchor: "bottom",
-            })
-              .setLngLat([event.longitude, event.latitude]).addTo(map);
-              markersRef.current.push(marker);
+            createEventMarker(event, map);
           }
         });
       } catch (error) {
         console.error("Failed to refresh events:", error);
       }
     };
+
     fetchAndRefresh();
-    return () => { cancelled = true; };
-  }, [activeCategories, myEventsOnly, friendsOnly, token, apiService, userId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeCategories,
+    myEventsOnly,
+    friendsOnly,
+    token,
+    apiService,
+    userId,
+    followedUserIds,
+  ]);
 
   const toggleCategory = (cat: EventCategory) => {
     setActiveCategories((prev) => {
