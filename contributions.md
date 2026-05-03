@@ -100,12 +100,12 @@ reason).
 
 ---
 
-## Contributions Week 5 - [Begin Date] to [End Date]
+## Contributions Week 5 - 27.04.2026 to 03.05.2026
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
-| **GabrielVuattoux** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **GabrielVuattoux** | 01.05.2026   | https://github.com/claudioo2/sopra-fs26-group-21-server/commit/762ee6f617b479a7fb48fde5f0b7edc2ce86ec54 | Merge branch 'follow-other-users': follow users + allowPrivateMessages | important merge to main (10 files modified) |
+|                    | 03.05.2026   | https://github.com/claudioo2/sopra-fs26-group-21-server/commit/b885d14bb5bdf5b469f23fe761b88d70a1cb5bdc | Add required unique email field on User (entity, DTOs, mapper, service uniqueness check) | important POV security and uniqueness |
 | **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **claudioo2** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
