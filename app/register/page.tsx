@@ -8,7 +8,9 @@ import { Button, Form, Input, ConfigProvider } from "antd";
 
 interface FormFieldProps {
   username: string;
+  email: string;
   password: string;
+  confirmPassword: string;
 }
 
 const Register: React.FC = () => {
@@ -20,7 +22,8 @@ const Register: React.FC = () => {
 
   const handleRegister = async (values: FormFieldProps) => {
     try {
-      const response = await apiService.post<User>("/users", values);
+      const { username, email, password } = values;
+      const response = await apiService.post<User>("/users", { username, email, password });
       if (response.token) setToken(response.token);
       if (response.id) setUserId(response.id);
       router.push("/map");
@@ -85,7 +88,7 @@ const Register: React.FC = () => {
               colorError: "#ef4444",
             },
           }}>
-            <Form form={form} name="register" size="large" onFinish={handleRegister} layout="vertical">
+            <Form form={form} name="register" size="large" onFinish={handleRegister} layout="vertical" requiredMark={false}>
               <Form.Item
                 name="username"
                 label="Username"
@@ -94,12 +97,45 @@ const Register: React.FC = () => {
                 <Input placeholder="Enter username" />
               </Form.Item>
               <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: "Please input your email!" },
+                  { type: "email", message: "Please enter a valid email address." },
+                ]}
+              >
+                <Input placeholder="you@example.com" />
+              </Form.Item>
+              <Form.Item
                 name="password"
                 label="Password"
-                rules={[{ required: true, message: "Please input your password!" }]}
-                style={{ marginBottom: 24 }}
+                rules={[
+                  { required: true, message: "Please input your password!" },
+                  { min: 6, message: "Password must be at least 6 characters." },
+                ]}
+                hasFeedback
               >
                 <Input.Password placeholder="Enter password" />
+              </Form.Item>
+              <Form.Item
+                name="confirmPassword"
+                label="Confirm password"
+                dependencies={["password"]}
+                hasFeedback
+                rules={[
+                  { required: true, message: "Please confirm your password!" },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue("password") === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(new Error("Passwords do not match."));
+                    },
+                  }),
+                ]}
+                style={{ marginBottom: 24 }}
+              >
+                <Input.Password placeholder="Confirm password" />
               </Form.Item>
               <Form.Item style={{ marginBottom: 0 }}>
                 <Button type="primary" htmlType="submit" block style={{ height: 44, fontWeight: 600, fontSize: 15 }}>
