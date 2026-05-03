@@ -112,8 +112,8 @@ reason).
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **semirIbra** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **semirIbra** | [30.04.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-server/commit/56408585873e84d01eaa71fbd12ab306fb963c55] | [Implementation of the functionality to follow other users (in the backend). Includes a new controller endpoint, User entity update, service logic with validation and testing] | [Adds the ability for users to follow others for enhancing social interaction. Without this functionality other features (user stories) cannot be implemented.] |
+|                    | [01.05.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/f2667f88ff615dce8ac12f52d8fb2c79bc83944d, https://github.com/claudioo2/sopra-fs26-group-21-client/commit/d8adb4f2ec5a390616dea1f03e5a4b130f8f92fa, https://github.com/claudioo2/sopra-fs26-group-21-client/commit/f2fb3d85b89a0c3012a7ebd1410616c5ce4b40d3] | [User Story 11 (3 issues): Users can select a "Friends Only" filter that shows them events that are at least visited by one friend/follower. If there is no friend that visits an event, an appropriate message appears] | [This leverages the follow/friend relationships to personalize event discovery and improves user experience by highlighting socially relevant events and providing clear feedback when no such events are available] |
 
 
 ---
