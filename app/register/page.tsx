@@ -33,11 +33,20 @@ const Register: React.FC = () => {
     } catch (error) {
       if (error instanceof Error) {
         let msg = "Registration failed. Please try again.";
-        if (error.message.includes("not unique") || error.message.includes("already")) {
-          msg = "This username is already taken. Please choose another one.";
-        } else if (error.message.includes("email")) {
-          msg = "This email is already in use.";
-        }
+        try {
+          const jsonMatch = error.message.match(/\(\d+: ([\s\S]+)\)$/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[1]);
+            const detail: string = parsed.detail ?? parsed.message ?? "";
+            if (detail.toLowerCase().includes("already exists")) {
+              msg = "An account with this username and email already exists. Please log in instead.";
+            } else if (detail.toLowerCase().includes("username")) {
+              msg = "This username is already taken. Please choose another one.";
+            } else if (detail.toLowerCase().includes("email")) {
+              msg = "This email is already in use. Please use a different one.";
+            }
+          }
+        } catch { /* keep generic message */ }
         alert(msg);
       }
     }

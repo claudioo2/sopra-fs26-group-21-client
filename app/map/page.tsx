@@ -137,7 +137,6 @@ export default function MapPage() {
       return;
     }
     if (!token) {
-      window.alert("You are not authenticated. Please log in.");
       router.push("/login");
       return;
     }
