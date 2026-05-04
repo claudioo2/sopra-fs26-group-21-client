@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
@@ -18,6 +19,8 @@ const Login: React.FC = () => {
   const { set: setToken } = useLocalStorage<string>("token", "");
   const { set: setUserId } = useLocalStorage<string>("userId", "");
 
+  useEffect(() => { router.prefetch("/map"); }, [router]);
+
   const handleLogin = async (values: FormFieldProps) => {
     try {
       const response = await apiService.post<User>("/users/login", values);
@@ -26,7 +29,8 @@ const Login: React.FC = () => {
       router.push("/map");
     } catch (error) {
       if (error instanceof Error) {
-        alert(`Something went wrong during the login:\n${error.message}`);
+        const msg = "Incorrect username or password. Please try again.";
+        alert(msg);
       }
     }
   };

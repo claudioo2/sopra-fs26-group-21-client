@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
@@ -20,6 +21,8 @@ const Register: React.FC = () => {
   const { set: setToken } = useLocalStorage<string>("token", "");
   const { set: setUserId } = useLocalStorage<string>("userId", "");
 
+  useEffect(() => { router.prefetch("/map"); }, [router]);
+
   const handleRegister = async (values: FormFieldProps) => {
     try {
       const { username, email, password } = values;
@@ -29,7 +32,13 @@ const Register: React.FC = () => {
       router.push("/map");
     } catch (error) {
       if (error instanceof Error) {
-        alert(`Something went wrong during the registration:\n${error.message}`);
+        let msg = "Registration failed. Please try again.";
+        if (error.message.includes("not unique") || error.message.includes("already")) {
+          msg = "This username is already taken. Please choose another one.";
+        } else if (error.message.includes("email")) {
+          msg = "This email is already in use.";
+        }
+        alert(msg);
       }
     }
   };
