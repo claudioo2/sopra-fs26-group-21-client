@@ -122,7 +122,7 @@ reason).
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
-| **GabrielVuattoux** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+| **GabrielVuattoux** | 04.05.2026   | https://github.com/claudioo2/sopra-fs26-group-21-client/commit/646fa86 | Cluster overlapping events on the map with spiderfy expansion (closes #112) — donut markers with category-coloured petals proportional to count, click expands into a spider with leader lines | Several events at the same location used to stack on top of each other and become impossible to click individually; this fixes the issue and improves readability when many events overlap |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
