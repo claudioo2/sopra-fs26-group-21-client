@@ -205,6 +205,7 @@ export default function MapPage() {
   const chatEventRef = useRef<EventDTO | null>(null);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
+  const [user, setUser] = useState<User | null>(null);
   const [followedUserIds, setFollowedUserIds] = useState<number[]>([]);
   const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
   const [myEventsOnly, setMyEventsOnly] = useState(false);
