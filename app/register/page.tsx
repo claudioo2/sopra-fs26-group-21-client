@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
@@ -20,6 +21,8 @@ const Register: React.FC = () => {
   const { set: setToken } = useLocalStorage<string>("token", "");
   const { set: setUserId } = useLocalStorage<string>("userId", "");
 
+  useEffect(() => { router.prefetch("/map"); }, [router]);
+
   const handleRegister = async (values: FormFieldProps) => {
     try {
       const { username, email, password } = values;
@@ -29,7 +32,22 @@ const Register: React.FC = () => {
       router.push("/map");
     } catch (error) {
       if (error instanceof Error) {
-        alert(`Something went wrong during the registration:\n${error.message}`);
+        let msg = "Registration failed. Please try again.";
+        try {
+          const jsonMatch = error.message.match(/\(\d+: ([\s\S]+)\)$/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[1]);
+            const detail: string = parsed.detail ?? parsed.message ?? "";
+            if (detail.toLowerCase().includes("already exists")) {
+              msg = "An account with this username and email already exists. Please log in instead.";
+            } else if (detail.toLowerCase().includes("username")) {
+              msg = "This username is already taken. Please choose another one.";
+            } else if (detail.toLowerCase().includes("email")) {
+              msg = "This email is already in use. Please use a different one.";
+            }
+          }
+        } catch { /* keep generic message */ }
+        alert(msg);
       }
     }
   };

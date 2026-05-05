@@ -396,7 +396,6 @@ export default function MapPage() {
       return;
     }
     if (!token) {
-      window.alert("You are not authenticated. Please log in.");
       router.push("/login");
       return;
     }
@@ -427,6 +426,7 @@ export default function MapPage() {
         .filter((id): id is string => id !== null)
         .map(id => Number(id));
 
+        setUser(data);
         setFollowedUserIds(ids);
 
       } catch (err) {
@@ -546,7 +546,7 @@ export default function MapPage() {
         events = events.filter(
           (event) => !event.isPrivate || event.participantIds?.includes(Number(userId)),
         );
-        if (cancelled) return;
+        if (cancelled || !mapInstanceRef.current) return;
         renderClusters(events);
       } catch (error) {
         console.error("Failed to refresh events:", error);
@@ -987,18 +987,21 @@ export default function MapPage() {
                 </p>
               )}
               {chatMessages.map((msg) => {
+                const isOwn = msg.senderUsername === user?.username;
                 return (
                   <div
                     key={msg.id}
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      alignItems: "flex-start",
+                      alignItems: isOwn ? "flex-end" : "flex-start",
                     }}
                   >
-                    <span style={{ fontSize: "11px", color: "#9ca3af", marginBottom: "2px" }}>
-                      {msg.senderUsername}
-                    </span>
+                    {!isOwn && (
+                      <span style={{ fontSize: "11px", color: "#9ca3af", marginBottom: "2px" }}>
+                        {msg.senderUsername}
+                      </span>
+                    )}
                     <div
                       style={{
                         maxWidth: "80%",
@@ -1007,6 +1010,8 @@ export default function MapPage() {
                         backgroundColor: "#2e3138",
                         color: "#fff",
                         fontSize: "14px",
+                        wordBreak: "break-word",
+                        overflowWrap: "anywhere",
                       }}
                     >
                       {msg.content}
@@ -1041,6 +1046,7 @@ export default function MapPage() {
                 type="primary"
                 onClick={handleSendMessage}
                 disabled={!chatInput.trim() || !stompConnected}
+                style={{ color: "#fff" }}
               >
                 {stompConnected ? "Send" : "Connecting…"}
               </Button>
