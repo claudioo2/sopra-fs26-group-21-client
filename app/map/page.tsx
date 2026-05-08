@@ -347,7 +347,6 @@ export default function MapPage() {
       return;
     }
     if (!token) {
-      window.alert("You are not authenticated. Please log in.");
       router.push("/login");
       return;
     }
@@ -438,9 +437,10 @@ export default function MapPage() {
 
       map.addControl(
         new mapboxgl.GeolocateControl({
-          positionOptions: { enableHighAccuracy: true },
+          positionOptions: { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000},
           trackUserLocation: true,
           showUserHeading: true,
+      
         })
       );
 
@@ -870,7 +870,41 @@ export default function MapPage() {
   };
 
 
-  if (!token) return null;
+  if (!isMounted) {
+    return (
+      <main
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+          color: "#475569",
+          fontSize: "16px",
+        }}
+      >
+        Loading application...
+      </main>
+    );
+  }
+
+  if (!token) {
+    return (
+      <main
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+          color: "#475569",
+          fontSize: "16px",
+        }}
+      >
+        Redirecting to login...
+      </main>
+    );
+  }
 
   const isCreator = selectedEvent !== null && Number(userId) === selectedEvent.creatorId;
 
