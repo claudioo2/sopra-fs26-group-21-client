@@ -74,7 +74,7 @@ interface Message {
   eventId: number;
 }
 
-const DEFAULT_CENTER: [number, number] = [13.405, 52.52]; // Berlin fallback
+const DEFAULT_CENTER: [number, number] = [8.5404, 47.378]; // Berlin fallback
 
 export default function MapPage() {
   const router = useRouter();
@@ -457,17 +457,34 @@ export default function MapPage() {
       });
     };
 
+    initMap(DEFAULT_CENTER);
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          initMap([position.coords.longitude, position.coords.latitude]);
+          const userCenter: [number, number] = [
+            position.coords.longitude,
+            position.coords.latitude,
+          ];
+
+          mapCenterRef.current = userCenter;
+
+          mapInstanceRef.current?.flyTo({
+            center: userCenter,
+            zoom: 12,
+          });
+
+          mapInstanceRef.current?.fire("moveend");
         },
         () => {
-          initMap(DEFAULT_CENTER);
+          console.warn("Could not get user location. Using default center.");
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 3000,
+          maximumAge: 60000,
         }
       );
-    } else {
-      initMap(DEFAULT_CENTER);
     }
 
     return () => {
