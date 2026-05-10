@@ -306,7 +306,7 @@ const Profile: React.FC = () => {
         {loadingFollowing ? (
           <p style={{ color: "#6b7280" }}>Loading users you follow...</p>
         ) : following.length === 0 ? (
-          <p style={{ color: "#9ca3af" }}>You don't follow anyone yet.</p>
+          <p style={{ color: "#9ca3af" }}>You don&apos;t follow anyone yet.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {following.map((followedUser) => (
