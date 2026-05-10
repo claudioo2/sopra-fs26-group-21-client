@@ -35,6 +35,12 @@ const Profile: React.FC = () => {
   const [form] = Form.useForm();
   const [isFollowing, setIsFollowing] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
+  const [followingModalOpen, setFollowingModalOpen] = useState(false);
+  const [following, setFollowing] = useState<User[]>([]);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [followers, setFollowers] = useState<User[]>([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
 
@@ -103,6 +109,50 @@ const Profile: React.FC = () => {
     setIsFollowing((prev) => !prev);
   };
 
+  const handleOpenFollowingModal = async () => {
+    setFollowingModalOpen(true);
+    setLoadingFollowing(true);
+
+    try {
+      const data = await apiService.get<User[]>(
+        `/users/${profileId}/following`,
+        { Authorization: `Bearer ${token}` }
+      );
+
+      setFollowing(data);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? `Could not load users you follow:\n${error.message}`
+          : "Could not load users you follow."
+      );
+    } finally {
+      setLoadingFollowing(false);
+    }
+  };
+
+  const handleOpenFollowersModal = async () => {
+    setFollowersModalOpen(true);
+    setLoadingFollowers(true);
+
+    try {
+      const data = await apiService.get<User[]>(
+        `/users/${profileId}/followers`,
+        { Authorization: `Bearer ${token}` }
+      );
+
+      setFollowers(data);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? `Could not load followers:\n${error.message}`
+          : "Could not load followers."
+      );
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px 40px" }}>
 
@@ -161,10 +211,42 @@ const Profile: React.FC = () => {
 
         {isOwnProfile && (
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-            <Button onClick={() => router.push(`/users/${profileId}/followers`)} style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 8, fontWeight: 500 }}>
+            <Button
+              onClick={handleOpenFollowingModal}
+              style={{
+                backgroundColor: "#1c1c1c",
+                borderColor: "#333",
+                color: "#fff",
+                borderRadius: 8,
+                fontWeight: 500,
+              }}
+            >
+              View users you follow
+            </Button>
+
+            <Button
+              onClick={handleOpenFollowersModal}
+              style={{
+                backgroundColor: "#1c1c1c",
+                borderColor: "#333",
+                color: "#fff",
+                borderRadius: 8,
+                fontWeight: 500,
+              }}
+            >
               View Followers
             </Button>
-            <Button onClick={handleLogout} style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 8, fontWeight: 500 }}>
+
+
+            <Button 
+              onClick={handleLogout} 
+              style={{ 
+                backgroundColor: "#1c1c1c", 
+                borderColor: "#333", 
+                color: "#fff", 
+                borderRadius: 8, 
+                fontWeight: 500 
+              }}>
               Logout
             </Button>
           </div>
@@ -213,6 +295,106 @@ const Profile: React.FC = () => {
           Back to Map
         </Button>
       </div>
+      {/* Following modal */}
+      <Modal
+        open={followingModalOpen}
+        onCancel={() => setFollowingModalOpen(false)}
+        footer={null}
+        title={<span style={{ color: "#111827" }}>Followers</span>}
+        width={420}
+      >
+        {loadingFollowing ? (
+          <p style={{ color: "#6b7280" }}>Loading users you follow...</p>
+        ) : following.length === 0 ? (
+          <p style={{ color: "#9ca3af" }}>You don't follow anyone yet.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {following.map((followedUser) => (
+              <div
+                key={followedUser.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  backgroundColor: "#f3f4f6",
+                }}
+              >
+                <div>
+                  <p style={{ margin: 0, color: "#111827", fontWeight: 600 }}>
+                    {followedUser.username ?? `User ${followedUser.id}`}
+                  </p>
+                  <p style={{ margin: 0, color: "#6b7280", fontSize: 12 }}>
+                    {followedUser.status ?? "Offline"}
+                  </p>
+                </div>
+
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setFollowingModalOpen(false);
+                    router.push(`/users/${followedUser.id}`);
+                  }}
+                >
+                  View
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
+
+      <Modal
+        open={followersModalOpen}
+        onCancel={() => setFollowersModalOpen(false)}
+        footer={null}
+        title={<span style={{ color: "#111827" }}>Followers</span>}
+        width={420}
+      >
+        {loadingFollowers ? (
+          <p style={{ color: "#6b7280" }}>Loading followers...</p>
+        ) : followers.length === 0 ? (
+          <p style={{ color: "#9ca3af" }}>No followers yet.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {followers.map((follower) => (
+              <div
+                key={follower.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  backgroundColor: "#f3f4f6",
+                }}
+              >
+                <div>
+                  <p style={{ margin: 0, color: "#111827", fontWeight: 600 }}>
+                    {follower.username ?? `User ${follower.id}`}
+                  </p>
+                  <p style={{ margin: 0, color: "#6b7280", fontSize: 12 }}>
+                    {follower.status ?? "Offline"}
+                  </p>
+                </div>
+
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setFollowersModalOpen(false);
+                    router.push(`/users/${follower.id}`);
+                  }}
+                >
+                  View
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
 
       {/* Event detail modal */}
       <Modal
