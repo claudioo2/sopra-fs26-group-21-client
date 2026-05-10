@@ -202,6 +202,7 @@ export default function MapPage() {
   const superclusterRef = useRef<Supercluster<EventFeatureProps> | null>(null);
   const mapCenterRef = useRef<[number, number]>(DEFAULT_CENTER);
   const stompClientRef = useRef<Client | null>(null);
+  const notifClientRef = useRef<Client | null>(null);
   const chatEventRef = useRef<EventDTO | null>(null);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -228,7 +229,7 @@ export default function MapPage() {
   const [chatInput, setChatInput] = useState("");
 
   const [form] = Form.useForm();
-  const { message: messageApi } = App.useApp();
+  const { message: messageApi, notification: notificationApi } = App.useApp();
 
   const { value: token, clear: clearToken } = useLocalStorage<string>("token", "");
   const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");
@@ -437,6 +438,52 @@ export default function MapPage() {
     fetchUser();
  }, [userId, token, apiService]);
 
+  // #49 — Subscribe in background to all user events and show a notification on new messages
+  useEffect(() => {
+    if (!userId || !token || !isMounted) return;
+
+    const sockJsUrl = getApiDomain().replace(/\/$/, "") + "/ws";
+
+    const setup = async () => {
+      try {
+        const events = await apiService.get<EventDTO[]>(
+          `/users/${userId}/events`,
+          { Authorization: `Bearer ${token}` }
+        );
+
+        const client = new Client({
+          webSocketFactory: () => new SockJS(sockJsUrl),
+          onConnect: () => {
+            events.forEach((event) => {
+              client.subscribe(`/topic/chat/${event.id}`, () => {
+                if (chatEventRef.current?.id === event.id) return;
+                notificationApi.open({
+                  key: `msg-${event.id}-${Date.now()}`,
+                  title: "New message",
+                  description: `New message in "${event.title}"`,
+                  duration: 6,
+                });
+              });
+            });
+          },
+        });
+
+        client.activate();
+        notifClientRef.current = client;
+      } catch {
+        // silently ignore notification setup failures
+      }
+    };
+
+    setup();
+
+    return () => {
+      notifClientRef.current?.deactivate();
+      notifClientRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, token, isMounted]);
+
   // Map initialization — runs after auth guard confirms isMounted + token
   useEffect(() => {
     if (!isMounted || !token) return;
@@ -620,6 +667,8 @@ export default function MapPage() {
 
   const handleLogout = () => {
     stompClientRef.current?.deactivate();
+    notifClientRef.current?.deactivate();
+    notifClientRef.current = null;
     setIsMounted(false);
     clearToken();
     clearUserId();
