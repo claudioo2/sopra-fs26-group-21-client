@@ -17,7 +17,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Spontaneo",
   description: "Spontaneo – discover events near you",
-  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({
