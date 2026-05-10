@@ -61,6 +61,11 @@ export default function RootLayout({
                 contentBg: "#23262d",
                 colorText: "#ffffff",
               },
+              Notification: {
+                colorBgElevated: "#23262d",
+                colorText: "#ffffff",
+                colorTextHeading: "#ffffff",
+              },
             },
           }}
         >
