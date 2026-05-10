@@ -455,12 +455,16 @@ export default function MapPage() {
           webSocketFactory: () => new SockJS(sockJsUrl),
           onConnect: () => {
             events.forEach((event) => {
-              client.subscribe(`/topic/chat/${event.id}`, () => {
+              client.subscribe(`/topic/chat/${event.id}`, (frame) => {
                 if (chatEventRef.current?.id === event.id) return;
+                const msg: Message = JSON.parse(frame.body);
+                const preview = msg.content.length > 60
+                  ? msg.content.slice(0, 60) + "…"
+                  : msg.content;
                 notificationApi.open({
                   key: `msg-${event.id}-${Date.now()}`,
-                  title: "New message",
-                  description: `New message in "${event.title}"`,
+                  title: event.title,
+                  description: `${msg.senderUsername}: ${preview}`,
                   duration: 6,
                 });
               });
