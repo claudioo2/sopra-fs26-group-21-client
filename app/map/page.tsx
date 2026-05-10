@@ -461,11 +461,17 @@ export default function MapPage() {
                 const preview = msg.content.length > 60
                   ? msg.content.slice(0, 60) + "…"
                   : msg.content;
+                const key = `msg-${event.id}-${Date.now()}`;
                 notificationApi.open({
-                  key: `msg-${event.id}-${Date.now()}`,
+                  key,
                   title: event.title,
                   description: `${msg.senderUsername}: ${preview}`,
                   duration: 6,
+                  style: { cursor: "pointer" },
+                  onClick: () => {
+                    notificationApi.destroy(key);
+                    handleOpenChat(event);
+                  },
                 });
               });
             });
