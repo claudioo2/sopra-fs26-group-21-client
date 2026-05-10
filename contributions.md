@@ -130,6 +130,6 @@ reason).
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **semirIbra** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **semirIbra** | [07.05.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-server/commit/b83d7af48fcd058e40fdb83fb28f34e5fbc3ef5a] | [Add an endpoint in the back-end that returns all users that you are following (it returns each users id and username)] | [This endpoint is needed for the client to show the users who they follow. Furthermore, this makes it for the client possible to differentiate between whom a user follows and whom not (E.g. when the user visits an event)] |
+|                    | [08.05.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/433dd9c41509b2ecfcc17f90e7fb9b9f4849aa42] | [Users can follow (or unfollow) other participants of an event by clicking on "follow" or "unfollow"] | [This makes it possible for users to be connected with others and to see which events they are participating] |
 
