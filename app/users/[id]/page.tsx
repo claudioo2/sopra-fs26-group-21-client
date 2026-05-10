@@ -260,17 +260,19 @@ const Profile: React.FC = () => {
               <Button type="primary" block onClick={() => router.push(`/map?openChat=${selectedEvent.id}`)}>
                 Join Chat
               </Button>
-              <Button danger block onClick={async () => {
-                try {
-                  await apiService.delete(`/events/${selectedEvent.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
-                  setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
-                  setSelectedEvent(null);
-                } catch (error) {
-                  alert(error instanceof Error ? error.message : "Failed to leave event");
-                }
-              }}>
-                Leave Event
-              </Button>
+              {Number(userId) !== selectedEvent.creatorId && (
+                <Button danger block onClick={async () => {
+                  try {
+                    await apiService.delete(`/events/${selectedEvent.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
+                    setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
+                    setSelectedEvent(null);
+                  } catch (error) {
+                    alert(error instanceof Error ? error.message : "Failed to leave event");
+                  }
+                }}>
+                  Leave Event
+                </Button>
+              )}
             </div>
             <Button block onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}>
               View Board
