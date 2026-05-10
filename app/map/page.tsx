@@ -728,7 +728,7 @@ export default function MapPage() {
         setStompConnected(true);
         client.subscribe(`/topic/chat/${event.id}`, (frame) => {
           const msg: Message = JSON.parse(frame.body);
-          setChatMessages((prev) => [...prev, msg]);
+          setChatMessages((prev) => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
         });
       },
       onDisconnect: () => {
