@@ -6,7 +6,7 @@ import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { User } from "@/types/user";
 import { EventDTO, EventCategory } from "@/types/event";
-import { Button, Form, Input, Modal } from "antd";
+import { App, Button, Form, Input, Modal } from "antd";
 import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
@@ -41,8 +41,11 @@ const Profile: React.FC = () => {
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [followers, setFollowers] = useState<User[]>([]);
   const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const { message: messageApi } = App.useApp();
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
+
+  const isCreator = selectedEvent !== null && Number(userId) === selectedEvent.creatorId;
 
   useEffect(() => {
     if (!isMounted) {
@@ -150,6 +153,30 @@ const Profile: React.FC = () => {
       );
     } finally {
       setLoadingFollowers(false);
+    }
+  };
+
+  const handleDeleteEvent = async (selectedEvent: EventDTO | null) => {
+    if (!selectedEvent) return;
+  
+    const confirmed = window.confirm("Are you sure you want to delete this event?");
+    if (!confirmed) return;
+  
+    try {
+      await apiService.delete(
+        `/events/${selectedEvent.id}`,
+        { Authorization: `Bearer ${token}` }
+      );
+  
+      const eventId = selectedEvent.id;
+
+      setSelectedEvent(null);
+
+      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+      messageApi.success("Event deleted.");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to delete event";
+      messageApi.error(msg);
     }
   };
 
@@ -442,7 +469,7 @@ const Profile: React.FC = () => {
               <Button type="primary" block onClick={() => router.push(`/map?openChat=${selectedEvent.id}`)}>
                 Join Chat
               </Button>
-              <Button danger block onClick={async () => {
+              {!isCreator && (<Button danger block onClick={async () => {
                 try {
                   await apiService.delete(`/events/${selectedEvent.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
                   setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
@@ -452,11 +479,16 @@ const Profile: React.FC = () => {
                 }
               }}>
                 Leave Event
-              </Button>
+              </Button>)}
             </div>
             <Button block onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}>
               View Board
             </Button>
+            {isCreator && (
+              <Button onClick={() => handleDeleteEvent(selectedEvent)} danger block>
+              Delete Event
+              </Button>
+            )}
           </div>
         )}
       </Modal>
