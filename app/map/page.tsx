@@ -6,7 +6,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Supercluster from "supercluster";
 import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal, Select } from "antd";
-import { LockOutlined, GlobalOutlined } from "@ant-design/icons";
+import { LockOutlined, GlobalOutlined, PlusOutlined, CompassOutlined, UserOutlined, KeyOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -327,6 +327,8 @@ export default function MapPage() {
       const zoom = Math.floor(map.getZoom());
       const clusters = index.getClusters(bbox, zoom);
 
+      if (!map.getContainer()?.isConnected) return;
+
       clusters.forEach((feat) => {
         const [lng, lat] = feat.geometry.coordinates as [number, number];
         const props = feat.properties as Supercluster.AnyProps;
@@ -557,7 +559,10 @@ export default function MapPage() {
       });
 
       // Click on empty map collapses any open spider.
-      map.on("click", () => clearSpider());
+      map.on("click", () => {
+        clearSpider();
+        if (chatEventRef.current) handleCloseChat();
+      });
     };
 
     if (navigator.geolocation) {
@@ -940,14 +945,18 @@ export default function MapPage() {
         { Authorization: `Bearer ${token}` }
       );
       messageApi.success("You joined the event!");
-
       mapInstanceRef.current?.flyTo({
         center: [response.longitude, response.latitude],
         zoom: 14,
       });
       mapInstanceRef.current?.fire("moveend");
     } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to join event. Please check the invite code and try again.";
+      const raw = error instanceof Error ? error.message : "";
+      const msg = raw.includes("404") || raw.includes("not found")
+        ? "Invalid invite code. Please check and try again."
+        : raw.includes("409") || raw.includes("already")
+        ? "You are already a participant of this event."
+        : "Something went wrong. Please try again.";
       messageApi.error(msg);
     } finally { setJoiningEvent(false); }
   };
@@ -959,46 +968,6 @@ export default function MapPage() {
 
   return (
     <main style={{ position: "relative", height: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Top bar */}
-      <div style={{ padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-        <h1 style={{ margin: 0 }}>Map</h1>
-        <Button
-  type="primary"
-  onClick={openPanel}
-  shape="circle"
-  style={{
-    width: 40,
-    height: 40,
-    minWidth: 40,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center"
-  }}
->
-  <span style={{ fontSize: 36, fontWeight: 700, position: "relative", top: "-4px" }}>
-    +
-  </span>
-</Button>
-        <form onSubmit={handleJoinByInviteCode} style={{ display: "flex", gap: "8px", color: "#fff" }}>
-          <input
-            name="inviteCode"
-            type="text"
-            placeholder="  Enter event invite code"
-            style={{ fontSize: "18px" }}
-          />
-          <button type="submit" style={{ backgroundColor: "#1890ff", color: "#fff", border: "none", padding: "10px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "15px" }}>
-            Join Event
-          </button>
-        </form>
-        <Button onClick={() => router.push(`/users/${userId}`)} style={{ marginLeft: "auto" }}>
-          My Profile
-        </Button>
-        <Button onClick={handleLogout} style={{ color: "#ef4444", borderColor: "#ef4444" }}>
-          Logout
-        </Button>
-      </div>
-
-
       <div style={{ flex: 1, minHeight: 0, display: "flex", position: "relative", overflow: "hidden" }}>
         {/* Chat panel — left side */}
         {chatOpen && chatEventRef.current && (
@@ -1124,6 +1093,37 @@ export default function MapPage() {
         {/* Map */}
         <div style={{ flex: 1, position: "relative" }}>
           <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
+
+          {/* Brand overlay */}
+          <div style={{
+            position: "absolute",
+            top: 12,
+            left: 16,
+            zIndex: 2,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: "rgba(255,255,255,0.88)",
+            backdropFilter: "blur(6px)",
+            borderRadius: "999px",
+            padding: "6px 14px 6px 8px",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+          }}>
+            <svg width="38" height="38" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="logo-bg" cx="38%" cy="35%" r="65%">
+                  <stop offset="0%" stopColor="#86efac"/>
+                  <stop offset="50%" stopColor="#22c55e"/>
+                  <stop offset="100%" stopColor="#065f46"/>
+                </radialGradient>
+              </defs>
+              <circle cx="20" cy="20" r="19" fill="url(#logo-bg)"/>
+              <rect x="18.8" y="23" width="2.4" height="9" rx="1.2" fill="#cbd5e1" opacity="0.85"/>
+              <circle cx="20" cy="18" r="6.5" fill="#ef4444"/>
+              <circle cx="17.8" cy="15.8" r="2" fill="white" opacity="0.4"/>
+            </svg>
+            <span style={{ fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Spontaneo</span>
+          </div>
 
           {/* Filter pills overlay */}
           <div style={{
@@ -1506,8 +1506,7 @@ export default function MapPage() {
               )}
             </div>
             <div>
-              <span style={{ color: "#6b7280", fontSize: "12px" }}>Photos</span>
-              {selectedEvent.pictureUrls && selectedEvent.pictureUrls.length > 0 ? (
+              {selectedEvent.pictureUrls && selectedEvent.pictureUrls.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "6px" }}>
                   {selectedEvent.pictureUrls.map((url, i) => (
                     <img
@@ -1518,8 +1517,6 @@ export default function MapPage() {
                     />
                   ))}
                 </div>
-              ) : (
-                <p style={{ margin: "2px 0 0 0", color: "#9ca3af" }}>No photos available</p>
               )}
               {/* Join button — not creator and not yet a participant */}
             {!isCreator && !selectedEvent.isParticipant && (
@@ -1556,6 +1553,42 @@ export default function MapPage() {
           </div>
         )}
       </Modal>
+
+      {/* Bottom navigation */}
+      <div style={{
+        height: 64,
+        paddingBottom: 12,
+        backgroundColor: "#16181D",
+        borderTop: "1px solid #2a2d35",
+        display: "flex",
+        alignItems: "center",
+        flexShrink: 0,
+      }}>
+        <button
+          onClick={() => {}}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "#75bd9d", fontSize: 11, fontWeight: 500 }}
+        >
+          <CompassOutlined style={{ fontSize: 22 }} />
+          <span>Explore</span>
+        </button>
+
+        <button
+          onClick={openPanel}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
+        >
+          <div style={{ width: 48, height: 48, borderRadius: "50%", backgroundColor: "#75bd9d", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(117,189,157,0.4)", marginBottom: -8 }}>
+            <PlusOutlined style={{ fontSize: 22, color: "#fff" }} />
+          </div>
+        </button>
+
+        <button
+          onClick={() => router.push(`/users/${userId}`)}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "#888", fontSize: 11, fontWeight: 500 }}
+        >
+          <UserOutlined style={{ fontSize: 22 }} />
+          <span>Profile</span>
+        </button>
+      </div>
     </main>
   );
 }

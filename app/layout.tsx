@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Student XX-XXX-XXX",
-  description: "sopra-fs26-template-client",
+  title: "Spontaneo",
+  description: "Spontaneo – discover events near you",
 };
 
 export default function RootLayout({
