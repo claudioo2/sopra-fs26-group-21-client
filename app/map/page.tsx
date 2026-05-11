@@ -968,69 +968,6 @@ export default function MapPage() {
 
   return (
     <main style={{ position: "relative", height: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Top bar */}
-      <div style={{
-        padding: "12px 20px",
-        display: "flex",
-        alignItems: "center",
-        backgroundColor: "#16181D",
-        borderBottom: "1px solid #2a2d35",
-        flexShrink: 0,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <radialGradient id="logo-bg" cx="38%" cy="35%" r="65%">
-                <stop offset="0%" stopColor="#86efac"/>
-                <stop offset="50%" stopColor="#22c55e"/>
-                <stop offset="100%" stopColor="#065f46"/>
-              </radialGradient>
-            </defs>
-            <circle cx="20" cy="20" r="19" fill="url(#logo-bg)"/>
-            <rect x="18.8" y="23" width="2.4" height="9" rx="1.2" fill="#cbd5e1" opacity="0.85"/>
-            <circle cx="20" cy="18" r="6.5" fill="#ef4444"/>
-            <circle cx="17.8" cy="15.8" r="2" fill="white" opacity="0.4"/>
-          </svg>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#fff", letterSpacing: "-0.3px" }}>
-            Spontaneo
-          </h1>
-        </div>
-        <div style={{ marginLeft: "auto", display: "flex", gap: "10px", alignItems: "center" }}>
-          <form onSubmit={handleJoinByInviteCode} style={{ position: "relative", display: "flex", alignItems: "center" }}>
-            <KeyOutlined style={{ position: "absolute", left: 12, color: "#888", fontSize: 15, pointerEvents: "none" }} />
-            <input
-              name="inviteCode"
-              type="text"
-              placeholder="Join with code"
-              className="invite-input"
-              style={{
-                fontSize: "16px",
-                fontWeight: 400,
-                padding: "0 14px 0 34px",
-                height: 38,
-                boxSizing: "border-box",
-                lineHeight: "38px",
-                borderRadius: "8px",
-                border: "1px solid #3a3d45",
-                backgroundColor: "#23262d",
-                color: "#fff",
-                outline: "none",
-                width: 160,
-              }}
-            />
-          </form>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={openPanel}
-            style={{ fontWeight: 600 }}
-          >
-            Create Event
-          </Button>
-        </div>
-      </div>
-
-
       <div style={{ flex: 1, minHeight: 0, display: "flex", position: "relative", overflow: "hidden" }}>
         {/* Chat panel — left side */}
         {chatOpen && chatEventRef.current && (
@@ -1156,6 +1093,37 @@ export default function MapPage() {
         {/* Map */}
         <div style={{ flex: 1, position: "relative" }}>
           <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
+
+          {/* Brand overlay */}
+          <div style={{
+            position: "absolute",
+            top: 12,
+            left: 16,
+            zIndex: 2,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            backgroundColor: "rgba(255,255,255,0.88)",
+            backdropFilter: "blur(6px)",
+            borderRadius: "999px",
+            padding: "6px 14px 6px 8px",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+          }}>
+            <svg width="38" height="38" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <radialGradient id="logo-bg" cx="38%" cy="35%" r="65%">
+                  <stop offset="0%" stopColor="#86efac"/>
+                  <stop offset="50%" stopColor="#22c55e"/>
+                  <stop offset="100%" stopColor="#065f46"/>
+                </radialGradient>
+              </defs>
+              <circle cx="20" cy="20" r="19" fill="url(#logo-bg)"/>
+              <rect x="18.8" y="23" width="2.4" height="9" rx="1.2" fill="#cbd5e1" opacity="0.85"/>
+              <circle cx="20" cy="18" r="6.5" fill="#ef4444"/>
+              <circle cx="17.8" cy="15.8" r="2" fill="white" opacity="0.4"/>
+            </svg>
+            <span style={{ fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Spontaneo</span>
+          </div>
 
           {/* Filter pills overlay */}
           <div style={{
@@ -1593,34 +1561,33 @@ export default function MapPage() {
         backgroundColor: "#16181D",
         borderTop: "1px solid #2a2d35",
         display: "flex",
+        alignItems: "center",
         flexShrink: 0,
       }}>
-        {([
-          { label: "Explore", icon: <CompassOutlined style={{ fontSize: 22 }} />, onClick: () => {}, active: true },
-          { label: "Profile", icon: <UserOutlined style={{ fontSize: 22 }} />, onClick: () => router.push(`/users/${userId}`), active: false },
-        ] as const).map(({ label, icon, onClick, active }) => (
-          <button
-            key={label}
-            onClick={onClick}
-            style={{
-              flex: 1,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 4,
-              color: active ? "#75bd9d" : "#888",
-              fontSize: 11,
-              fontWeight: 500,
-            }}
-          >
-            {icon}
-            <span>{label}</span>
-          </button>
-        ))}
+        <button
+          onClick={() => {}}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "#75bd9d", fontSize: 11, fontWeight: 500 }}
+        >
+          <CompassOutlined style={{ fontSize: 22 }} />
+          <span>Explore</span>
+        </button>
+
+        <button
+          onClick={openPanel}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
+        >
+          <div style={{ width: 48, height: 48, borderRadius: "50%", backgroundColor: "#75bd9d", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(117,189,157,0.4)", marginBottom: -8 }}>
+            <PlusOutlined style={{ fontSize: 22, color: "#fff" }} />
+          </div>
+        </button>
+
+        <button
+          onClick={() => router.push(`/users/${userId}`)}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "#888", fontSize: 11, fontWeight: 500 }}
+        >
+          <UserOutlined style={{ fontSize: 22 }} />
+          <span>Profile</span>
+        </button>
       </div>
     </main>
   );
