@@ -35,11 +35,19 @@ const Profile: React.FC = () => {
   const [form] = Form.useForm();
   const [isFollowing, setIsFollowing] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
+  const [followingModalOpen, setFollowingModalOpen] = useState(false);
+  const [following, setFollowing] = useState<User[]>([]);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [followers, setFollowers] = useState<User[]>([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joiningByCode, setJoiningByCode] = useState(false);
   const { message: messageApi } = App.useApp();
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
+
+  const isCreator = selectedEvent !== null && Number(userId) === selectedEvent.creatorId;
 
   useEffect(() => {
     if (!isMounted) {
@@ -104,6 +112,74 @@ const Profile: React.FC = () => {
 
   const handleFollowToggle = () => {
     setIsFollowing((prev) => !prev);
+  };
+
+  const handleOpenFollowingModal = async () => {
+    setFollowingModalOpen(true);
+    setLoadingFollowing(true);
+
+    try {
+      const data = await apiService.get<User[]>(
+        `/users/${profileId}/following`,
+        { Authorization: `Bearer ${token}` }
+      );
+
+      setFollowing(data);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? `Could not load users you follow:\n${error.message}`
+          : "Could not load users you follow."
+      );
+    } finally {
+      setLoadingFollowing(false);
+    }
+  };
+
+  const handleOpenFollowersModal = async () => {
+    setFollowersModalOpen(true);
+    setLoadingFollowers(true);
+
+    try {
+      const data = await apiService.get<User[]>(
+        `/users/${profileId}/followers`,
+        { Authorization: `Bearer ${token}` }
+      );
+
+      setFollowers(data);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? `Could not load followers:\n${error.message}`
+          : "Could not load followers."
+      );
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  const handleDeleteEvent = async (selectedEvent: EventDTO | null) => {
+    if (!selectedEvent) return;
+
+    const confirmed = window.confirm("Are you sure you want to delete this event?");
+    if (!confirmed) return;
+
+    try {
+      await apiService.delete(
+        `/events/${selectedEvent.id}`,
+        { Authorization: `Bearer ${token}` }
+      );
+
+      const eventId = selectedEvent.id;
+
+      setSelectedEvent(null);
+
+      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+      messageApi.success("Event deleted.");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to delete event";
+      messageApi.error(msg);
+    }
   };
 
   const handleJoinByCode = async (e: React.FormEvent) => {
@@ -188,10 +264,42 @@ const Profile: React.FC = () => {
 
         {isOwnProfile && (
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-            <Button onClick={() => router.push(`/users/${profileId}/followers`)} style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 8, fontWeight: 500 }}>
+            <Button
+              onClick={handleOpenFollowingModal}
+              style={{
+                backgroundColor: "#1c1c1c",
+                borderColor: "#333",
+                color: "#fff",
+                borderRadius: 8,
+                fontWeight: 500,
+              }}
+            >
+              View users you follow
+            </Button>
+
+            <Button
+              onClick={handleOpenFollowersModal}
+              style={{
+                backgroundColor: "#1c1c1c",
+                borderColor: "#333",
+                color: "#fff",
+                borderRadius: 8,
+                fontWeight: 500,
+              }}
+            >
               View Followers
             </Button>
-            <Button onClick={handleLogout} style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 8, fontWeight: 500 }}>
+
+
+            <Button 
+              onClick={handleLogout} 
+              style={{ 
+                backgroundColor: "#1c1c1c", 
+                borderColor: "#333", 
+                color: "#fff", 
+                borderRadius: 8, 
+                fontWeight: 500 
+              }}>
               Logout
             </Button>
           </div>
@@ -255,6 +363,106 @@ const Profile: React.FC = () => {
         </div>
 
       </div>
+      {/* Following modal */}
+      <Modal
+        open={followingModalOpen}
+        onCancel={() => setFollowingModalOpen(false)}
+        footer={null}
+        title={<span style={{ color: "#111827" }}>Followers</span>}
+        width={420}
+      >
+        {loadingFollowing ? (
+          <p style={{ color: "#6b7280" }}>Loading users you follow...</p>
+        ) : following.length === 0 ? (
+          <p style={{ color: "#9ca3af" }}>You don&apos;t follow anyone yet.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {following.map((followedUser) => (
+              <div
+                key={followedUser.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  backgroundColor: "#f3f4f6",
+                }}
+              >
+                <div>
+                  <p style={{ margin: 0, color: "#111827", fontWeight: 600 }}>
+                    {followedUser.username ?? `User ${followedUser.id}`}
+                  </p>
+                  <p style={{ margin: 0, color: "#6b7280", fontSize: 12 }}>
+                    {followedUser.status ?? "Offline"}
+                  </p>
+                </div>
+
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setFollowingModalOpen(false);
+                    router.push(`/users/${followedUser.id}`);
+                  }}
+                >
+                  View
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
+
+      <Modal
+        open={followersModalOpen}
+        onCancel={() => setFollowersModalOpen(false)}
+        footer={null}
+        title={<span style={{ color: "#111827" }}>Followers</span>}
+        width={420}
+      >
+        {loadingFollowers ? (
+          <p style={{ color: "#6b7280" }}>Loading followers...</p>
+        ) : followers.length === 0 ? (
+          <p style={{ color: "#9ca3af" }}>No followers yet.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {followers.map((follower) => (
+              <div
+                key={follower.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 12px",
+                  borderRadius: 8,
+                  backgroundColor: "#f3f4f6",
+                }}
+              >
+                <div>
+                  <p style={{ margin: 0, color: "#111827", fontWeight: 600 }}>
+                    {follower.username ?? `User ${follower.id}`}
+                  </p>
+                  <p style={{ margin: 0, color: "#6b7280", fontSize: 12 }}>
+                    {follower.status ?? "Offline"}
+                  </p>
+                </div>
+
+                <Button
+                  size="small"
+                  onClick={() => {
+                    setFollowersModalOpen(false);
+                    router.push(`/users/${follower.id}`);
+                  }}
+                >
+                  View
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
 
       {/* Event detail modal */}
       </div>{/* end scrollable content */}
@@ -322,7 +530,7 @@ const Profile: React.FC = () => {
               <Button type="primary" block onClick={() => router.push(`/map?openChat=${selectedEvent.id}`)}>
                 Join Chat
               </Button>
-              {Number(userId) !== selectedEvent.creatorId && (
+              {!isCreator && (
                 <Button danger block onClick={async () => {
                   try {
                     await apiService.delete(`/events/${selectedEvent.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
@@ -339,6 +547,11 @@ const Profile: React.FC = () => {
             <Button block onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}>
               View Board
             </Button>
+            {isCreator && (
+              <Button onClick={() => handleDeleteEvent(selectedEvent)} danger block>
+              Delete Event
+              </Button>
+            )}
           </div>
         )}
       </Modal>

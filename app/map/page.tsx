@@ -207,7 +207,7 @@ export default function MapPage() {
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
   const [user, setUser] = useState<User | null>(null);
-  const [followedUserIds, setFollowedUserIds] = useState<number[]>([]);
+  const [followedUsers, setFollowedUsers] = useState<User[]>([]);
   const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
   const [myEventsOnly, setMyEventsOnly] = useState(false);
   const [friendsOnly, setFriendsOnly] = useState(false);
@@ -413,6 +413,27 @@ export default function MapPage() {
     validate();
   }, [token, apiService, router, clearToken, isMounted]);
 
+  // fetch the following users
+  const fetchFollowing = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const data = await apiService.get<User[]>(
+        "/users/following",
+        { Authorization: `Bearer ${token}` }
+      );
+
+      setFollowedUsers(data);
+
+    } catch (err) {
+      console.error("Failed to fetch following", err);
+    }
+  }, [token, apiService]);
+
+  useEffect(() => {
+    fetchFollowing();
+  }, [fetchFollowing]);
+
 
   useEffect(() => {
     if (!userId || !token) return;
@@ -424,13 +445,7 @@ export default function MapPage() {
           { Authorization: `Bearer ${token}` }
         );
 
-        const ids = (data.following ?? [])
-        .map(f => f.id)
-        .filter((id): id is string => id !== null)
-        .map(id => Number(id));
-
         setUser(data);
-        setFollowedUserIds(ids);
 
       } catch (err) {
         console.error("Failed to fetch user", err);
@@ -602,9 +617,9 @@ export default function MapPage() {
         }
         if (friendsOnly) {
           events = events.filter(e =>
-            (e.participantIds ?? []).some(id => followedUserIds.includes(id)),
+            (e.participantIds ?? []).some(id => followedUsers.some(user => Number(user.id) === Number(id))),
           );
-          if (followedUserIds.length === 0) {
+          if (followedUsers.length === 0) {
             messageApi.info("You are not following anyone yet.");
           } else if (events.length === 0) {
             messageApi.info("None of your friends are attending any local events.");
@@ -621,7 +636,7 @@ export default function MapPage() {
     };
     fetchAndRefresh();
     return () => { cancelled = true; };
-  }, [activeCategories, myEventsOnly, friendsOnly, token, apiService, userId, followedUserIds, renderClusters]);
+  }, [activeCategories, myEventsOnly, friendsOnly, token, apiService, userId, followedUsers, renderClusters]);
 
   const toggleCategory = (cat: EventCategory) => {
     setActiveCategories((prev) => {
@@ -784,7 +799,7 @@ export default function MapPage() {
         `/events/${selectedEvent.id}/participants/${userId}`,
         { Authorization: `Bearer ${token}` }
       );
-      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 });
+      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 , participantIds: selectedEvent.participantIds?.filter(id => id !== Number(userId)) });
       messageApi.success("You left the event.");
 
       if (chatEventRef.current?.id === selectedEvent.id) {
@@ -961,6 +976,36 @@ export default function MapPage() {
     } finally { setJoiningEvent(false); }
   };
 
+  const handleFollowUser = async (targetUserId: number) => {
+    try {
+      await apiService.post(`/users/${targetUserId}/follow`,
+        {},
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      await fetchFollowing();
+      messageApi.success(`You are now following ${targetUserId}`);
+    }
+    catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to follow.";
+      messageApi.error(msg);
+    }
+  };
+
+  const handleUnFollowUser = async (targetUserId: number) => {
+    try {
+      await apiService.delete<User>(`/users/${targetUserId}/follow`,
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      await fetchFollowing();
+      messageApi.success(`You unfollowed ${targetUserId}`);
+    }
+    catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to unfollow.";
+      messageApi.error(msg);
+    }
+  };
 
   if (!token) return null;
 
@@ -1482,8 +1527,73 @@ export default function MapPage() {
                 <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.creatorUsername ?? "—"}</p>
               </div>
               <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>Participants</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.participantCount ?? 0}</p>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>Participants ({selectedEvent.participantCount ?? 0})</span>
+                {(selectedEvent.participantCount ?? 0) > 0 ? (
+                  <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {selectedEvent.participantIds?.map((participantId) => (
+                      <div
+                        key={participantId}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          padding: "6px 10px",
+                          borderRadius: "8px",
+                          backgroundColor: "#cad0db",
+                        }}
+                      >
+                        {/* USERNAMES */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "120px" }}>
+                          <span>{Number(participantId) === Number(userId)
+                                  ? `${participantId} (You)`
+                                  : Number(participantId) === Number(selectedEvent.creatorId) 
+                                  ? `${participantId} (Creator)`
+                                  : `${participantId}`}
+                          </span>
+                        </div>
+
+                        {/* BUTTON */}
+                        {participantId !== Number(userId) && (
+                          followedUsers.some(u => Number(u.id) === Number(participantId)) ? (
+                            <Button
+                              onClick={() => handleUnFollowUser(participantId)}
+                              style={{ 
+                                marginLeft: "16px",
+                                padding: "4px 8px",
+                                fontSize: "12px",
+                                borderRadius: "6px",
+                                border: "none",
+                                backgroundColor: "#ffffff",
+                                color: "#000",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Unfollow
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => handleFollowUser(participantId)}
+                              style={{ 
+                                marginLeft: "16px",
+                                padding: "4px 8px",
+                                fontSize: "12px",
+                                borderRadius: "6px",
+                                border: "none",
+                                backgroundColor: "#3b82f6",
+                                color: "#fff",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Follow
+                            </Button>
+                          )
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ color: "#9ca3af" }}>No participants yet</p>
+                )}
               </div>
             </div>
             <div style={{ display: "flex", gap: "24px" }}>
