@@ -75,7 +75,7 @@ interface Message {
   eventId: number;
 }
 
-const DEFAULT_CENTER: [number, number] = [13.405, 52.52]; // Berlin fallback
+const DEFAULT_CENTER: [number, number] = [8.5404, 47.378]; // Zurich fallback
 
 const CLUSTER_RADIUS = 50;       // px — supercluster grouping radius
 const CLUSTER_MAX_ZOOM = 16;     // beyond this zoom we stop clustering
@@ -555,7 +555,7 @@ export default function MapPage() {
 
       map.addControl(
         new mapboxgl.GeolocateControl({
-          positionOptions: { enableHighAccuracy: true },
+          positionOptions: { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 },
           trackUserLocation: true,
           showUserHeading: true,
         })
@@ -580,17 +580,26 @@ export default function MapPage() {
       });
     };
 
+    // Render the map immediately on DEFAULT_CENTER, then flyTo the user once geolocation resolves.
+    // Avoids blocking first paint on a slow GPS lock.
+    initMap(DEFAULT_CENTER);
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          initMap([position.coords.longitude, position.coords.latitude]);
+          const userCenter: [number, number] = [
+            position.coords.longitude,
+            position.coords.latitude,
+          ];
+          mapCenterRef.current = userCenter;
+          mapInstanceRef.current?.flyTo({ center: userCenter, zoom: 12 });
+          mapInstanceRef.current?.fire("moveend");
         },
         () => {
-          initMap(DEFAULT_CENTER);
-        }
+          console.warn("Could not get user location. Using default center.");
+        },
+        { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
       );
-    } else {
-      initMap(DEFAULT_CENTER);
     }
 
     return () => {
@@ -1007,7 +1016,41 @@ export default function MapPage() {
     }
   };
 
-  if (!token) return null;
+  if (!isMounted) {
+    return (
+      <main
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+          color: "#475569",
+          fontSize: "16px",
+        }}
+      >
+        Loading application...
+      </main>
+    );
+  }
+
+  if (!token) {
+    return (
+      <main
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+          color: "#475569",
+          fontSize: "16px",
+        }}
+      >
+        Redirecting to login...
+      </main>
+    );
+  }
 
   const isCreator = selectedEvent !== null && Number(userId) === selectedEvent.creatorId;
 
