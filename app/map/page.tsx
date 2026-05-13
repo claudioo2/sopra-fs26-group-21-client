@@ -211,6 +211,8 @@ export default function MapPage() {
   const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
   const [myEventsOnly, setMyEventsOnly] = useState(false);
   const [friendsOnly, setFriendsOnly] = useState(false);
+  const [includePast, setIncludePast] = useState(false);
+  const includePastRef = useRef(false);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
@@ -531,6 +533,7 @@ export default function MapPage() {
         if (categories.size > 0) {
           categories.forEach((cat) => { url += `&categories=${cat}`; });
         }
+        if (includePastRef.current) url += `&includePast=true`;
         const events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
         const visible = events.filter(
           (event) => !event.isPrivate || event.participantIds?.includes(Number(userId)),
@@ -618,6 +621,7 @@ export default function MapPage() {
       if (activeCategories.size > 0) {
         activeCategories.forEach((cat) => { url += `&categories=${cat}`; });
       }
+      if (includePast) url += `&includePast=true`;
       try {
         let events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
         if (myEventsOnly) {
@@ -645,7 +649,11 @@ export default function MapPage() {
     };
     fetchAndRefresh();
     return () => { cancelled = true; };
-  }, [activeCategories, myEventsOnly, friendsOnly, token, apiService, userId, followedUsers, renderClusters]);
+  }, [activeCategories, myEventsOnly, friendsOnly, includePast, token, apiService, userId, followedUsers, renderClusters]);
+
+  useEffect(() => {
+    includePastRef.current = includePast;
+  }, [includePast]);
 
   const toggleCategory = (cat: EventCategory) => {
     setActiveCategories((prev) => {
@@ -1265,6 +1273,24 @@ export default function MapPage() {
               }}
             >
               👥 Friends Only
+            </button>
+
+            <button
+              onClick={() => setIncludePast((v) => !v)}
+              style={{
+                padding: "3px 11px",
+                borderRadius: "999px",
+                border: "2px solid #64748b",
+                backgroundColor: includePast ? "#64748b" : "transparent",
+                color: includePast ? "#fff" : "#64748b",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
+              }}
+            >
+              🕘 Past Events
             </button>
 
 
