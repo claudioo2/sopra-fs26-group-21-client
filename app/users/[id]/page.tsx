@@ -7,7 +7,7 @@ import useLocalStorage from "@/hooks/useLocalStorage";
 import { User } from "@/types/user";
 import { EventDTO, EventCategory } from "@/types/event";
 import { App, Button, Form, Input, Modal } from "antd";
-import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, KeyOutlined, CompassOutlined, UserOutlined } from "@ant-design/icons";
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   SPORTS: "Sports", MUSIC: "Music", FOOD: "Food", ART: "Art",
@@ -41,6 +41,8 @@ const Profile: React.FC = () => {
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
   const [followers, setFollowers] = useState<User[]>([]);
   const [loadingFollowers, setLoadingFollowers] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  const [joiningByCode, setJoiningByCode] = useState(false);
   const { message: messageApi } = App.useApp();
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
@@ -158,16 +160,16 @@ const Profile: React.FC = () => {
 
   const handleDeleteEvent = async (selectedEvent: EventDTO | null) => {
     if (!selectedEvent) return;
-  
+
     const confirmed = window.confirm("Are you sure you want to delete this event?");
     if (!confirmed) return;
-  
+
     try {
       await apiService.delete(
         `/events/${selectedEvent.id}`,
         { Authorization: `Bearer ${token}` }
       );
-  
+
       const eventId = selectedEvent.id;
 
       setSelectedEvent(null);
@@ -180,8 +182,32 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleJoinByCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteCode.trim()) return;
+    setJoiningByCode(true);
+    try {
+      await apiService.post(`/events/participants`, { inviteCode: inviteCode.trim(), userId: Number(userId) }, { Authorization: `Bearer ${token}` });
+      messageApi.success("You joined the event!");
+      setInviteCode("");
+      router.push("/map");
+    } catch (error) {
+      const raw = error instanceof Error ? error.message : "";
+      const msg = raw.includes("404") || raw.includes("not found")
+        ? "Invalid invite code. Please check and try again."
+        : raw.includes("409") || raw.includes("already")
+        ? "You are already a participant of this event."
+        : "Something went wrong. Please try again.";
+      messageApi.error(msg);
+    } finally {
+      setJoiningByCode(false);
+    }
+  };
+
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px 40px" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", display: "flex", flexDirection: "column" }}>
+
+      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px 24px" }}>
 
       {/* Top bar */}
       <div style={{ width: "100%", maxWidth: 480, display: "flex", alignItems: "center", padding: "16px 0", gap: 12 }}>
@@ -282,6 +308,25 @@ const Profile: React.FC = () => {
         {/* Divider */}
         <div style={{ borderTop: "1px solid #1f1f1f", marginBottom: 24, marginTop: 24 }} />
 
+        {/* Join with code */}
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ color: "#fff", fontWeight: 600, fontSize: 15, margin: "0 0 10px 0" }}>Join with invite code</p>
+          <form onSubmit={handleJoinByCode} style={{ display: "flex", gap: 8 }}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <KeyOutlined style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: 14, pointerEvents: "none" }} />
+              <input
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                placeholder="Enter invite code"
+                style={{ width: "100%", padding: "0 12px 0 30px", height: 38, borderRadius: 8, border: "1px solid #333", backgroundColor: "#1c1c1c", color: "#fff", fontSize: 14, outline: "none" }}
+              />
+            </div>
+            <Button htmlType="submit" loading={joiningByCode} style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 8 }}>
+              Join
+            </Button>
+          </form>
+        </div>
+
         {/* Events section */}
         <div style={{ marginBottom: 24 }}>
           <p style={{ color: "#fff", fontWeight: 600, fontSize: 15, margin: "0 0 12px 0" }}>
@@ -317,10 +362,6 @@ const Profile: React.FC = () => {
           )}
         </div>
 
-        {/* Back to map */}
-        <Button block onClick={() => router.push("/map")} style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", height: 40, borderRadius: 8 }}>
-          Back to Map
-        </Button>
       </div>
       {/* Following modal */}
       <Modal
@@ -424,6 +465,26 @@ const Profile: React.FC = () => {
 
 
       {/* Event detail modal */}
+      </div>{/* end scrollable content */}
+
+      {/* Bottom navigation */}
+      <div style={{ height: 64, paddingBottom: 12, backgroundColor: "#16181D", borderTop: "1px solid #2a2d35", display: "flex", alignItems: "center", flexShrink: 0 }}>
+        <button
+          onClick={() => router.push("/map")}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "#888", fontSize: 11, fontWeight: 500 }}
+        >
+          <CompassOutlined style={{ fontSize: 22 }} />
+          <span>Explore</span>
+        </button>
+        <button
+          onClick={() => router.push(`/users/${profileId}`)}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "#75bd9d", fontSize: 11, fontWeight: 500 }}
+        >
+          <UserOutlined style={{ fontSize: 22 }} />
+          <span>Profile</span>
+        </button>
+      </div>
+
       <Modal
         open={selectedEvent !== null}
         onCancel={() => setSelectedEvent(null)}
@@ -469,17 +530,19 @@ const Profile: React.FC = () => {
               <Button type="primary" block onClick={() => router.push(`/map?openChat=${selectedEvent.id}`)}>
                 Join Chat
               </Button>
-              {!isCreator && (<Button danger block onClick={async () => {
-                try {
-                  await apiService.delete(`/events/${selectedEvent.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
-                  setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
-                  setSelectedEvent(null);
-                } catch (error) {
-                  alert(error instanceof Error ? error.message : "Failed to leave event");
-                }
-              }}>
-                Leave Event
-              </Button>)}
+              {!isCreator && (
+                <Button danger block onClick={async () => {
+                  try {
+                    await apiService.delete(`/events/${selectedEvent.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
+                    setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
+                    setSelectedEvent(null);
+                  } catch (error) {
+                    alert(error instanceof Error ? error.message : "Failed to leave event");
+                  }
+                }}>
+                  Leave Event
+                </Button>
+              )}
             </div>
             <Button block onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}>
               View Board
