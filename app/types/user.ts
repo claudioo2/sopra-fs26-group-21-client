@@ -8,3 +8,8 @@ export interface User {
   bio: string | null;
   following: User[] | null;
 }
+
+export interface UserPreview {
+  id: number | null;
+  username: string | null;
+}

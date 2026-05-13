@@ -1,3 +1,5 @@
+import { UserPreview } from "./user";
+
 export type EventCategory =
   | "SPORTS"
   | "MUSIC"
@@ -24,5 +26,5 @@ export interface EventDTO {
   participantCount: number | null;
   pictureUrls: string[] | null;
   isParticipant?: boolean;
-  participantIds?: number[] | null;
+  participants?: UserPreview[] | null;
 }

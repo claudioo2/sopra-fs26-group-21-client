@@ -84,6 +84,10 @@ const SPIDER_LEAF_RADIUS_PER_LEAF = 3; // grow the circle a bit when many leaves
 
 type EventFeatureProps = { event: EventDTO };
 
+function getParticipantIds(event: EventDTO): number[] {
+  return event.participants?.map((u) => Number(u.id)) ?? [];
+}
+
 function buildPinSvg(category: EventCategory | null | undefined): string {
   const color = category ? CATEGORY_COLORS[category] : "#94a3b8";
   const icon = category ? CATEGORY_ICONS[category] : CATEGORY_ICONS.OTHER;
@@ -398,6 +402,7 @@ export default function MapPage() {
 
   // Fetch my rating when an event modal opens
   useEffect(() => {
+    console.log(typeof selectedEvent?.participants?.[0]?.id);
     if (!selectedEvent || !token) {
       setMyRating(null);
       return;
@@ -558,7 +563,7 @@ export default function MapPage() {
         if (includePastRef.current) url += `&includePast=true`;
         const events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
         const visible = events.filter(
-          (event) => !event.isPrivate || event.participantIds?.includes(Number(userId)),
+          (event) => !event.isPrivate || getParticipantIds(event).includes(Number(userId)),
         );
         renderClusters(visible);
       } catch (error) {
@@ -648,11 +653,11 @@ export default function MapPage() {
         let events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
         if (myEventsOnly) {
           const uid = Number(userId);
-          events = events.filter(e => e.creatorId === uid || e.participantIds?.includes(uid));
+          events = events.filter(e => e.creatorId === uid || getParticipantIds(e).includes(uid));
         }
         if (friendsOnly) {
           events = events.filter(e =>
-            (e.participantIds ?? []).some(id => followedUsers.some(user => Number(user.id) === Number(id))),
+            (getParticipantIds(e) ?? []).some(id => followedUsers.some(user => Number(user.id) === Number(id))),
           );
           if (followedUsers.length === 0) {
             messageApi.info("You are not following anyone yet.");
@@ -661,7 +666,7 @@ export default function MapPage() {
           }
         }
         events = events.filter(
-          (event) => !event.isPrivate || event.participantIds?.includes(Number(userId)),
+          (event) => !event.isPrivate || getParticipantIds(event).includes(Number(userId)),
         );
         if (cancelled || !mapInstanceRef.current) return;
         renderClusters(events);
@@ -838,7 +843,7 @@ export default function MapPage() {
         `/events/${selectedEvent.id}/participants/${userId}`,
         { Authorization: `Bearer ${token}` }
       );
-      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 , participantIds: selectedEvent.participantIds?.filter(id => id !== Number(userId)) });
+      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 , participants: (selectedEvent.participants ?? []).filter(participant => participant.id !== Number(userId)) });
       messageApi.success("You left the event.");
 
       if (chatEventRef.current?.id === selectedEvent.id) {
@@ -1034,7 +1039,7 @@ export default function MapPage() {
     } finally { setJoiningEvent(false); }
   };
 
-  const handleFollowUser = async (targetUserId: number) => {
+  const handleFollowUser = async (targetUserId: number | null) => {
     try {
       await apiService.post(`/users/${targetUserId}/follow`,
         {},
@@ -1050,7 +1055,7 @@ export default function MapPage() {
     }
   };
 
-  const handleUnFollowUser = async (targetUserId: number) => {
+  const handleUnFollowUser = async (targetUserId: number | null) => {
     try {
       await apiService.delete<User>(`/users/${targetUserId}/follow`,
         { Authorization: `Bearer ${token}` }
@@ -1639,10 +1644,20 @@ export default function MapPage() {
               <div>
                 <span style={{ color: "#6b7280", fontSize: "12px" }}>Participants ({selectedEvent.participantCount ?? 0})</span>
                 {(selectedEvent.participantCount ?? 0) > 0 ? (
-                  <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                    {selectedEvent.participantIds?.map((participantId) => (
+                  <div
+                    style={{
+                      marginTop: "6px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
+                      maxHeight: "190px",
+                      overflowY: "auto",
+                      paddingRight: "15px",
+                    }}
+                  >
+                    {selectedEvent.participants?.map((participant) => (
                       <div
-                        key={participantId}
+                        key={participant.id}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -1654,49 +1669,79 @@ export default function MapPage() {
                       >
                         {/* USERNAMES */}
                         <div style={{ display: "flex", alignItems: "center", gap: "120px" }}>
-                          <span>{Number(participantId) === Number(userId)
-                                  ? `${participantId} (You)`
-                                  : Number(participantId) === Number(selectedEvent.creatorId) 
-                                  ? `${participantId} (Creator)`
-                                  : `${participantId}`}
+                          <span
+                            onClick={() => router.push(`/users/${participant.id}`)}
+                            style={{
+                              cursor: "pointer",
+                              fontWeight: 500,
+                              transition: "0.2s",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.opacity = "0.7";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.opacity = "1";
+                            }}
+                          >
+                            {Number(participant.id) === Number(userId)
+                              ? `${participant.username} (You)`
+                              : Number(participant.id) === Number(selectedEvent.creatorId)
+                              ? `${participant.username} (Creator)`
+                              : `${participant.username}`}
                           </span>
                         </div>
 
                         {/* BUTTON */}
-                        {participantId !== Number(userId) && (
-                          followedUsers.some(u => Number(u.id) === Number(participantId)) ? (
+                        {participant.id !== Number(userId) && (
+                          <div style={{ display: "flex", gap: "8px", marginLeft: "16px" }}>
+
+                            {followedUsers.some(u => Number(u.id) === Number(participant.id)) ? (
+                              <Button
+                                onClick={() => handleUnFollowUser(participant.id)}
+                                style={{
+                                  padding: "4px 8px",
+                                  fontSize: "12px",
+                                  borderRadius: "6px",
+                                  border: "none",
+                                  backgroundColor: "#ffffff",
+                                  color: "#000",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Unfollow
+                              </Button>
+                            ) : (
+                              <Button
+                                onClick={() => handleFollowUser(participant.id)}
+                                style={{
+                                  padding: "4px 8px",
+                                  fontSize: "12px",
+                                  borderRadius: "6px",
+                                  border: "none",
+                                  backgroundColor: "#3b82f6",
+                                  color: "#fff",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Follow
+                              </Button>
+                            )}
+
                             <Button
-                              onClick={() => handleUnFollowUser(participantId)}
-                              style={{ 
-                                marginLeft: "16px",
+                              onClick={() => router.push(`/users/${participant.id}`)}
+                              style={{
                                 padding: "4px 8px",
                                 fontSize: "12px",
                                 borderRadius: "6px",
-                                border: "none",
-                                backgroundColor: "#ffffff",
-                                color: "#000",
+                                border: "1px solid #d1d5db",
+                                backgroundColor: "#fff",
+                                color: "#111",
                                 cursor: "pointer",
                               }}
                             >
-                              Unfollow
+                              Visit
                             </Button>
-                          ) : (
-                            <Button
-                              onClick={() => handleFollowUser(participantId)}
-                              style={{ 
-                                marginLeft: "16px",
-                                padding: "4px 8px",
-                                fontSize: "12px",
-                                borderRadius: "6px",
-                                border: "none",
-                                backgroundColor: "#3b82f6",
-                                color: "#fff",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Follow
-                            </Button>
-                          )
+                          </div>
                         )}
                       </div>
                     ))}
