@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Supercluster from "supercluster";
-import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal, Select } from "antd";
+import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal, Select, Rate } from "antd";
 import { LockOutlined, GlobalOutlined, PlusOutlined, CompassOutlined, UserOutlined, KeyOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
@@ -217,6 +217,8 @@ export default function MapPage() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
   const [leavingEvent, setLeavingEvent] = useState(false);
+  const [myRating, setMyRating] = useState<number | null>(null);
+  const [submittingRating, setSubmittingRating] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -393,6 +395,26 @@ export default function MapPage() {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  // Fetch my rating when an event modal opens
+  useEffect(() => {
+    if (!selectedEvent || !token) {
+      setMyRating(null);
+      return;
+    }
+    const fetchMyRating = async () => {
+      try {
+        const r = await apiService.get<{ score: number } | null>(
+          `/events/${selectedEvent.id}/ratings/me`,
+          { Authorization: `Bearer ${token}` }
+        );
+        setMyRating(r?.score ?? null);
+      } catch {
+        setMyRating(null);
+      }
+    };
+    fetchMyRating();
+  }, [selectedEvent, token, apiService]);
 
   // Auth guard — delays check by one render to avoid SSR/localStorage issues
   useEffect(() => {
@@ -904,6 +926,25 @@ export default function MapPage() {
       }),
     });
     setChatInput("");
+  };
+
+  const handleSubmitRating = async (score: number) => {
+    if (!selectedEvent) return;
+    setSubmittingRating(true);
+    try {
+      await apiService.post(
+        `/events/${selectedEvent.id}/ratings`,
+        { score },
+        { Authorization: `Bearer ${token}` }
+      );
+      setMyRating(score);
+      messageApi.success("Rating submitted");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to submit rating";
+      messageApi.error(msg);
+    } finally {
+      setSubmittingRating(false);
+    }
   };
 
   const handleSubmit = async (values: EventFormValues) => {
@@ -1684,6 +1725,27 @@ export default function MapPage() {
                 </div>
               )}
             </div>
+            {!isCreator && selectedEvent.isParticipant && (
+              <div>
+                <span style={{ color: "#6b7280", fontSize: "12px" }}>Rate organizer</span>
+                {new Date(selectedEvent.endTime) < new Date() ? (
+                  myRating != null ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Rate disabled value={myRating} />
+                      <span style={{ fontSize: 12, color: "#6b7280" }}>
+                        You rated {myRating}/5
+                      </span>
+                    </div>
+                  ) : (
+                    <Rate disabled={submittingRating} onChange={handleSubmitRating} />
+                  )
+                ) : (
+                  <p style={{ margin: "4px 0 0 0", color: "#9ca3af", fontSize: 13 }}>
+                    Available after event ends
+                  </p>
+                )}
+              </div>
+            )}
             <div>
               {selectedEvent.pictureUrls && selectedEvent.pictureUrls.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "6px" }}>
