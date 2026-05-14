@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface LocalStorage<T> {
   value: T;
@@ -40,21 +40,23 @@ export default function useLocalStorage<T>(
     }
   }, [key]);
 
-  // Simple setter that updates both state and localStorage
-  const set = (newVal: T) => {
+  // Memoized so consumers can include `set`/`clear` in useEffect deps
+  // without re-running the effect on every render (which would, for the
+  // map auth guard, refire /auth/validate after every state change and
+  // logout the user on the first transient failure).
+  const set = useCallback((newVal: T) => {
     setValue(newVal);
     if (typeof window !== "undefined") {
       globalThis.localStorage.setItem(key, JSON.stringify(newVal));
     }
-  };
+  }, [key]);
 
-  // Removes the key from localStorage and resets the state
-  const clear = () => {
+  const clear = useCallback(() => {
     setValue(defaultValue);
     if (typeof window !== "undefined") {
       globalThis.localStorage.removeItem(key);
     }
-  };
+  }, [key, defaultValue]);
 
   return { value, set, clear };
 }
