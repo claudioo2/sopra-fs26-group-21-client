@@ -61,6 +61,8 @@ const Profile: React.FC = () => {
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
 
+  const isCreator = selectedEvent !== null && Number(userId) === selectedEvent.creatorId;
+
   useEffect(() => {
     if (!isMounted) { setIsMounted(true); return; }
     if (!token) { router.push("/login"); return; }
@@ -134,6 +136,74 @@ const Profile: React.FC = () => {
       messageApi.success("Event deleted.");
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : "Failed to delete event");
+    }
+  };
+
+  const handleOpenFollowingModal = async () => {
+    setFollowingModalOpen(true);
+    setLoadingFollowing(true);
+
+    try {
+      const data = await apiService.get<User[]>(
+        `/users/${profileId}/following`,
+        { Authorization: `Bearer ${token}` }
+      );
+
+      setFollowing(data);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? `Could not load users you follow:\n${error.message}`
+          : "Could not load users you follow."
+      );
+    } finally {
+      setLoadingFollowing(false);
+    }
+  };
+
+  const handleOpenFollowersModal = async () => {
+    setFollowersModalOpen(true);
+    setLoadingFollowers(true);
+
+    try {
+      const data = await apiService.get<User[]>(
+        `/users/${profileId}/followers`,
+        { Authorization: `Bearer ${token}` }
+      );
+
+      setFollowers(data);
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? `Could not load followers:\n${error.message}`
+          : "Could not load followers."
+      );
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  const handleDeleteEvent = async (selectedEvent: EventDTO | null) => {
+    if (!selectedEvent) return;
+
+    const confirmed = window.confirm("Are you sure you want to delete this event?");
+    if (!confirmed) return;
+
+    try {
+      await apiService.delete(
+        `/events/${selectedEvent.id}`,
+        { Authorization: `Bearer ${token}` }
+      );
+
+      const eventId = selectedEvent.id;
+
+      setSelectedEvent(null);
+
+      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+      messageApi.success("Event deleted.");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to delete event";
+      messageApi.error(msg);
     }
   };
 

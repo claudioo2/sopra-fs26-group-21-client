@@ -75,7 +75,7 @@ interface Message {
   eventId: number;
 }
 
-const DEFAULT_CENTER: [number, number] = [13.405, 52.52]; // Berlin fallback
+const DEFAULT_CENTER: [number, number] = [8.5404, 47.378]; // Zurich fallback
 
 const CLUSTER_RADIUS = 50;       // px — supercluster grouping radius
 const CLUSTER_MAX_ZOOM = 16;     // beyond this zoom we stop clustering
@@ -399,6 +399,26 @@ export default function MapPage() {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
+  // Fetch my rating when an event modal opens
+  useEffect(() => {
+    if (!selectedEvent || !token) {
+      setMyRating(null);
+      return;
+    }
+    const fetchMyRating = async () => {
+      try {
+        const r = await apiService.get<{ score: number } | null>(
+          `/events/${selectedEvent.id}/ratings/me`,
+          { Authorization: `Bearer ${token}` }
+        );
+        setMyRating(r?.score ?? null);
+      } catch {
+        setMyRating(null);
+      }
+    };
+    fetchMyRating();
+  }, [selectedEvent, token, apiService]);
+
   // Auth guard — delays check by one render to avoid SSR/localStorage issues
   useEffect(() => {
     if (!isMounted) {
@@ -419,6 +439,27 @@ export default function MapPage() {
     };
     validate();
   }, [token, apiService, router, clearToken, isMounted]);
+
+  // fetch the following users
+  const fetchFollowing = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const data = await apiService.get<User[]>(
+        "/users/following",
+        { Authorization: `Bearer ${token}` }
+      );
+
+      setFollowedUsers(data);
+
+    } catch (err) {
+      console.error("Failed to fetch following", err);
+    }
+  }, [token, apiService]);
+
+  useEffect(() => {
+    fetchFollowing();
+  }, [fetchFollowing]);
 
 
   const fetchFollowing = useCallback(async () => {
@@ -578,6 +619,7 @@ export default function MapPage() {
         if (categories.size > 0) {
           categories.forEach((cat) => { url += `&categories=${cat}`; });
         }
+        if (includePastRef.current) url += `&includePast=true`;
         const events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
         const visible = events.filter(
           (event) => !event.isPrivate || event.participantIds?.includes(Number(userId)),
@@ -602,7 +644,7 @@ export default function MapPage() {
 
       map.addControl(
         new mapboxgl.GeolocateControl({
-          positionOptions: { enableHighAccuracy: true },
+          positionOptions: { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 },
           trackUserLocation: true,
           showUserHeading: true,
         })
@@ -627,17 +669,26 @@ export default function MapPage() {
       });
     };
 
+    // Render the map immediately on DEFAULT_CENTER, then flyTo the user once geolocation resolves.
+    // Avoids blocking first paint on a slow GPS lock.
+    initMap(DEFAULT_CENTER);
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          initMap([position.coords.longitude, position.coords.latitude]);
+          const userCenter: [number, number] = [
+            position.coords.longitude,
+            position.coords.latitude,
+          ];
+          mapCenterRef.current = userCenter;
+          mapInstanceRef.current?.flyTo({ center: userCenter, zoom: 12 });
+          mapInstanceRef.current?.fire("moveend");
         },
         () => {
-          initMap(DEFAULT_CENTER);
-        }
+          console.warn("Could not get user location. Using default center.");
+        },
+        { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 }
       );
-    } else {
-      initMap(DEFAULT_CENTER);
     }
 
     return () => {
@@ -656,6 +707,7 @@ export default function MapPage() {
       if (activeCategories.size > 0) {
         activeCategories.forEach((cat) => { url += `&categories=${cat}`; });
       }
+      if (includePast) url += `&includePast=true`;
       try {
         let events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
         if (myEventsOnly) {
@@ -848,7 +900,7 @@ export default function MapPage() {
         `/events/${selectedEvent.id}/participants/${userId}`,
         { Authorization: `Bearer ${token}` }
       );
-      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 });
+      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 , participantIds: selectedEvent.participantIds?.filter(id => id !== Number(userId)) });
       messageApi.success("You left the event.");
 
       if (chatEventRef.current?.id === selectedEvent.id) {
@@ -970,6 +1022,25 @@ export default function MapPage() {
     setChatInput("");
   };
 
+  const handleSubmitRating = async (score: number) => {
+    if (!selectedEvent) return;
+    setSubmittingRating(true);
+    try {
+      await apiService.post(
+        `/events/${selectedEvent.id}/ratings`,
+        { score },
+        { Authorization: `Bearer ${token}` }
+      );
+      setMyRating(score);
+      messageApi.success("Rating submitted");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to submit rating";
+      messageApi.error(msg);
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
+
   const handleSubmit = async (values: EventFormValues) => {
     const startDayjs = values.startDate
       .hour(values.startTime.hour())
@@ -1057,8 +1128,72 @@ export default function MapPage() {
     } finally { setJoiningEvent(false); }
   };
 
+  const handleFollowUser = async (targetUserId: number) => {
+    try {
+      await apiService.post(`/users/${targetUserId}/follow`,
+        {},
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      await fetchFollowing();
+      messageApi.success(`You are now following ${targetUserId}`);
+    }
+    catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to follow.";
+      messageApi.error(msg);
+    }
+  };
 
-  if (!token) return null;
+  const handleUnFollowUser = async (targetUserId: number) => {
+    try {
+      await apiService.delete<User>(`/users/${targetUserId}/follow`,
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      await fetchFollowing();
+      messageApi.success(`You unfollowed ${targetUserId}`);
+    }
+    catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to unfollow.";
+      messageApi.error(msg);
+    }
+  };
+
+  if (!isMounted) {
+    return (
+      <main
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+          color: "#475569",
+          fontSize: "16px",
+        }}
+      >
+        Loading application...
+      </main>
+    );
+  }
+
+  if (!token) {
+    return (
+      <main
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+          color: "#475569",
+          fontSize: "16px",
+        }}
+      >
+        Redirecting to login...
+      </main>
+    );
+  }
 
   const isCreator = selectedEvent !== null && Number(userId) === selectedEvent.creatorId;
 
@@ -1590,7 +1725,7 @@ export default function MapPage() {
               )}
 
               {/* Rate organizer */}
-              {!isCreator && selectedEvent.isParticipant && (
+              {!isCreator && selectedEvent.isParticipant && new Date(selectedEvent.endTime) < new Date() && (
                 <div style={card}>
                   <span style={label}>Rate Organizer</span>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
