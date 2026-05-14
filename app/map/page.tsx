@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Supercluster from "supercluster";
-import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Select } from "antd";
+import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Select, Rate } from "antd";
 import { LockOutlined, GlobalOutlined, PlusOutlined, CompassOutlined, UserOutlined, KeyOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
@@ -207,14 +207,19 @@ export default function MapPage() {
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
   const [user, setUser] = useState<User | null>(null);
-  const [followedUserIds, setFollowedUserIds] = useState<number[]>([]);
+  const [followedUsers, setFollowedUsers] = useState<User[]>([]);
   const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
   const [myEventsOnly, setMyEventsOnly] = useState(false);
   const [friendsOnly, setFriendsOnly] = useState(false);
+  const [includePast, setIncludePast] = useState(false);
+  const includePastRef = useRef(false);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
   const [leavingEvent, setLeavingEvent] = useState(false);
+  const [myRating, setMyRating] = useState<number | null>(null);
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [participantUsers, setParticipantUsers] = useState<User[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<string>("");
@@ -416,31 +421,63 @@ export default function MapPage() {
   }, [token, apiService, router, clearToken, isMounted]);
 
 
+  const fetchFollowing = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await apiService.get<User[]>("/users/following", { Authorization: `Bearer ${token}` });
+      setFollowedUsers(data);
+    } catch (err) {
+      console.error("Failed to fetch following", err);
+    }
+  }, [token, apiService]);
+
+  useEffect(() => { fetchFollowing(); }, [fetchFollowing]);
+
   useEffect(() => {
     if (!userId || !token) return;
-
     const fetchUser = async () => {
       try {
-        const data = await apiService.get<User>(
-          `/users/${userId}`,
-          { Authorization: `Bearer ${token}` }
-        );
-
-        const ids = (data.following ?? [])
-        .map(f => f.id)
-        .filter((id): id is string => id !== null)
-        .map(id => Number(id));
-
+        const data = await apiService.get<User>(`/users/${userId}`, { Authorization: `Bearer ${token}` });
         setUser(data);
-        setFollowedUserIds(ids);
-
       } catch (err) {
         console.error("Failed to fetch user", err);
       }
     };
-
     fetchUser();
- }, [userId, token, apiService]);
+  }, [userId, token, apiService]);
+
+  // Fetch my rating when an event modal opens
+  useEffect(() => {
+    if (!selectedEvent || !token) { setMyRating(null); return; }
+    const fetchMyRating = async () => {
+      try {
+        const r = await apiService.get<{ score: number } | null>(
+          `/events/${selectedEvent.id}/ratings/me`,
+          { Authorization: `Bearer ${token}` }
+        );
+        setMyRating(r?.score ?? null);
+      } catch { setMyRating(null); }
+    };
+    fetchMyRating();
+  }, [selectedEvent, token, apiService]);
+
+  // Fetch participant user objects when a modal opens so we can show follow/unfollow
+  useEffect(() => {
+    if (!selectedEvent?.participantIds?.length || !token) { setParticipantUsers([]); return; }
+    let cancelled = false;
+    const fetchParticipants = async () => {
+      try {
+        const ids = (selectedEvent.participantIds ?? []).slice(0, 30); // cap to 30
+        const users = await Promise.all(
+          ids.map((id) => apiService.get<User>(`/users/${id}`, { Authorization: `Bearer ${token}` }))
+        );
+        if (!cancelled) setParticipantUsers(users);
+      } catch { if (!cancelled) setParticipantUsers([]); }
+    };
+    fetchParticipants();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedEvent?.id, token, apiService]);
 
   // #49 — Subscribe in background to all user events and show a notification on new messages
   useEffect(() => {
@@ -626,9 +663,9 @@ export default function MapPage() {
         }
         if (friendsOnly) {
           events = events.filter(e =>
-            (e.participantIds ?? []).some(id => followedUserIds.includes(id)),
+            (e.participantIds ?? []).some(id => followedUsers.some(u => Number(u.id) === Number(id))),
           );
-          if (followedUserIds.length === 0) {
+          if (followedUsers.length === 0) {
             messageApi.info("You are not following anyone yet.");
           } else if (events.length === 0) {
             messageApi.info("None of your friends are attending any local events.");
@@ -645,7 +682,9 @@ export default function MapPage() {
     };
     fetchAndRefresh();
     return () => { cancelled = true; };
-  }, [activeCategories, myEventsOnly, friendsOnly, token, apiService, userId, followedUserIds, renderClusters]);
+  }, [activeCategories, myEventsOnly, friendsOnly, includePast, token, apiService, userId, followedUsers, renderClusters]);
+
+  useEffect(() => { includePastRef.current = includePast; }, [includePast]);
 
   const toggleCategory = (cat: EventCategory) => {
     setActiveCategories((prev) => {
@@ -884,6 +923,38 @@ export default function MapPage() {
 };
 
 
+  const handleSubmitRating = async (score: number) => {
+    if (!selectedEvent) return;
+    setSubmittingRating(true);
+    try {
+      await apiService.post(`/events/${selectedEvent.id}/ratings`, { score }, { Authorization: `Bearer ${token}` });
+      setMyRating(score);
+      messageApi.success("Rating submitted");
+    } catch (err) {
+      messageApi.error(err instanceof Error ? err.message : "Failed to submit rating");
+    } finally { setSubmittingRating(false); }
+  };
+
+  const handleFollowUser = async (targetUserId: number) => {
+    try {
+      await apiService.post(`/users/${targetUserId}/follow`, {}, { Authorization: `Bearer ${token}` });
+      await fetchFollowing();
+      messageApi.success("Following!");
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : "Failed to follow.");
+    }
+  };
+
+  const handleUnFollowUser = async (targetUserId: number) => {
+    try {
+      await apiService.delete<User>(`/users/${targetUserId}/follow`, { Authorization: `Bearer ${token}` });
+      await fetchFollowing();
+      messageApi.success("Unfollowed.");
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : "Failed to unfollow.");
+    }
+  };
+
   const handleSendMessage = () => {
     const text = chatInput.trim();
     if (!text || !stompConnected || !stompClientRef.current || !chatEventRef.current) return;
@@ -1088,10 +1159,10 @@ export default function MapPage() {
             backgroundColor: "rgba(0,0,0,0.82)",
             backdropFilter: "blur(8px)",
             borderRadius: "999px",
-            padding: "6px 14px 6px 8px",
+            padding: "8px 14px 8px 8px",
             boxShadow: "0 2px 12px rgba(0,0,0,0.35)",
           }}>
-            <svg width="18" height="24" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="26" height="33" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="pin-grad" x1="10%" y1="0%" x2="90%" y2="100%">
                   <stop offset="0%" stopColor="#833ab4"/>
@@ -1160,6 +1231,23 @@ export default function MapPage() {
               👥 Friends Only
             </button>
 
+            <button
+              onClick={() => setIncludePast((v) => !v)}
+              style={{
+                padding: "3px 11px",
+                borderRadius: "999px",
+                border: "2px solid #64748b",
+                backgroundColor: includePast ? "#64748b" : "transparent",
+                color: includePast ? "#fff" : "#64748b",
+                cursor: "pointer",
+                fontSize: "12px",
+                fontWeight: 600,
+                transition: "all 0.15s",
+                whiteSpace: "nowrap",
+              }}
+            >
+              🕘 Past Events
+            </button>
 
             <div style={{ width: 1, height: 20, backgroundColor: "#3a3f4a", margin: "0 2px", alignSelf: "center" }} />
 
@@ -1446,6 +1534,37 @@ export default function MapPage() {
                 </div>
               </div>
 
+              {/* Participants list with follow/unfollow */}
+              {participantUsers.length > 0 && (
+                <div style={card}>
+                  <span style={label}>Participants ({participantUsers.length})</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                    {participantUsers.map((p) => {
+                      const isMe = Number(p.id) === Number(userId);
+                      const isFollowing = followedUsers.some((u) => Number(u.id) === Number(p.id));
+                      return (
+                        <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <button
+                            onClick={() => { setSelectedEvent(null); router.push(`/users/${p.id}`); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#f3f4f6", fontSize: 14, fontWeight: 500, padding: 0, textAlign: "left" }}
+                          >
+                            {p.username ?? `User ${p.id}`}
+                          </button>
+                          {!isMe && (
+                            <button
+                              onClick={() => isFollowing ? handleUnFollowUser(Number(p.id)) : handleFollowUser(Number(p.id))}
+                              style={{ padding: "2px 12px", borderRadius: 999, border: `1.5px solid ${isFollowing ? "#3a3f4a" : catColor}`, backgroundColor: isFollowing ? "transparent" : catColor, color: isFollowing ? "#9ca3af" : "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                            >
+                              {isFollowing ? "Unfollow" : "Follow"}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Dates — single card */}
               <div style={card}>
                 <span style={label}>Start</span>
@@ -1466,6 +1585,29 @@ export default function MapPage() {
                     onClick={() => navigator.clipboard.writeText(selectedEvent.inviteCode ?? "")}
                     style={{ background: "none", border: "none", cursor: "pointer", color: catColor, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}
                   >Copy</button>
+                </div>
+              )}
+
+              {/* Rate organizer */}
+              {!isCreator && selectedEvent.isParticipant && (
+                <div style={card}>
+                  <span style={label}>Rate Organizer</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
+                    <ConfigProvider theme={{ token: { colorFillContent: catColor, colorFillContentHover: catColor } }}>
+                      <Rate
+                        value={myRating ?? 0}
+                        onChange={handleSubmitRating}
+                        disabled={submittingRating}
+                        style={{ color: catColor, fontSize: 22 }}
+                      />
+                    </ConfigProvider>
+                    {myRating !== null && (
+                      <span style={{ color: "#9ca3af", fontSize: 13 }}>{myRating}/5</span>
+                    )}
+                    {submittingRating && (
+                      <span style={{ color: "#6b7280", fontSize: 12 }}>Saving…</span>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1561,7 +1703,7 @@ export default function MapPage() {
             </>
           ) : (
             <>
-              <svg width="18" height="23" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg width="26" height="33" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                   <linearGradient id="fab-pin-grad" x1="10%" y1="0%" x2="90%" y2="100%">
                     <stop offset="0%" stopColor="#833ab4"/>

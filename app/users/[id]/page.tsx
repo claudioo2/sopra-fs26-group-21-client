@@ -6,7 +6,7 @@ import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { User } from "@/types/user";
 import { EventDTO, EventCategory } from "@/types/event";
-import { App, Button, Form, Input } from "antd";
+import { App, Form, Input } from "antd";
 import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, KeyOutlined, CompassOutlined, UserOutlined } from "@ant-design/icons";
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
@@ -48,6 +48,12 @@ const Profile: React.FC = () => {
   const [form] = Form.useForm();
   const [isFollowing, setIsFollowing] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
+  const [followingModalOpen, setFollowingModalOpen] = useState(false);
+  const [following, setFollowing] = useState<User[]>([]);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [followers, setFollowers] = useState<User[]>([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joiningByCode, setJoiningByCode] = useState(false);
   const [leavingEvent, setLeavingEvent] = useState(false);
@@ -99,6 +105,37 @@ const Profile: React.FC = () => {
   };
 
   const handleFollowToggle = () => setIsFollowing((prev) => !prev);
+
+  const handleOpenFollowingModal = async () => {
+    setFollowingModalOpen(true);
+    setLoadingFollowing(true);
+    try {
+      const data = await apiService.get<User[]>(`/users/${profileId}/following`, { Authorization: `Bearer ${token}` });
+      setFollowing(data);
+    } catch { setFollowing([]); } finally { setLoadingFollowing(false); }
+  };
+
+  const handleOpenFollowersModal = async () => {
+    setFollowersModalOpen(true);
+    setLoadingFollowers(true);
+    try {
+      const data = await apiService.get<User[]>(`/users/${profileId}/followers`, { Authorization: `Bearer ${token}` });
+      setFollowers(data);
+    } catch { setFollowers([]); } finally { setLoadingFollowers(false); }
+  };
+
+  const handleDeleteEvent = async (event: EventDTO) => {
+    const confirmed = window.confirm("Are you sure you want to delete this event?");
+    if (!confirmed) return;
+    try {
+      await apiService.delete(`/events/${event.id}`, { Authorization: `Bearer ${token}` });
+      setSelectedEvent(null);
+      setEvents((prev) => prev.filter((e) => e.id !== event.id));
+      messageApi.success("Event deleted.");
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : "Failed to delete event");
+    }
+  };
 
   const handleJoinByCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -221,16 +258,22 @@ const Profile: React.FC = () => {
 
           {/* Action buttons */}
           {isOwnProfile && (
-            <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 28, flexWrap: "wrap" }}>
               <button
-                onClick={() => router.push(`/users/${profileId}/followers`)}
-                style={{ flex: 1, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#d1d5db", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
+                onClick={handleOpenFollowingModal}
+                style={{ flex: 1, minWidth: 80, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#d1d5db", fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                Following
+              </button>
+              <button
+                onClick={handleOpenFollowersModal}
+                style={{ flex: 1, minWidth: 80, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#d1d5db", fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}
               >
                 Followers
               </button>
               <button
                 onClick={handleLogout}
-                style={{ flex: 1, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#f87171", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
+                style={{ flex: 1, minWidth: 80, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#f87171", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
               >
                 Logout
               </button>
@@ -310,7 +353,7 @@ const Profile: React.FC = () => {
       </div>{/* end scrollable */}
 
       {/* Bottom navigation */}
-      <div style={{ height: 72, paddingBottom: 8, backgroundColor: "#16181D", borderTop: "1px solid #2a2d35", display: "flex", alignItems: "center", flexShrink: 0 }}>
+      <div style={{ position: "relative", height: 72, paddingBottom: 8, backgroundColor: "#16181D", borderTop: "1px solid #2a2d35", display: "flex", alignItems: "center", flexShrink: 0 }}>
         <button
           onClick={() => router.push("/map")}
           style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 }}
@@ -320,7 +363,45 @@ const Profile: React.FC = () => {
           <div style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "transparent" }} />
         </button>
 
-        {/* spacer — mirrors the FAB slot on the map page */}
+        {/* Drop a pin — centrato, porta alla mappa */}
+        <button
+          onClick={() => router.push("/map")}
+          style={{
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "linear-gradient(135deg, #833ab4, #6a2d93)",
+            border: "none",
+            borderRadius: 999,
+            height: 52,
+            padding: "0 24px",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 14,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            boxShadow: "0 4px 24px rgba(131,58,180,0.5)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <svg width="26" height="33" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="profile-pin-grad" x1="10%" y1="0%" x2="90%" y2="100%">
+                <stop offset="0%" stopColor="#833ab4"/>
+                <stop offset="50%" stopColor="#fd1d1d"/>
+                <stop offset="100%" stopColor="#fcb045"/>
+              </linearGradient>
+            </defs>
+            <path d="M14 1 C7 1 1 6.5 1 13 C1 20.5 14 35 14 35 C14 35 27 20.5 27 13 C27 6.5 21 1 14 1 Z" fill="url(#profile-pin-grad)"/>
+            <circle cx="14" cy="12.5" r="5.5" fill="rgba(0,0,0,0.35)"/>
+            <path d="M15.5 7 L11 13.5 L14 13.5 L12.5 18.5 L17 12 L14 12 Z" fill="white"/>
+          </svg>
+          Explore
+        </button>
+
+        {/* spacer */}
         <div style={{ flex: 1 }} />
 
         <button
@@ -418,6 +499,14 @@ const Profile: React.FC = () => {
                   >
                     View Board
                   </button>
+                  {isCreator && (
+                    <button
+                      onClick={() => handleDeleteEvent(selectedEvent)}
+                      style={{ width: "100%", height: 44, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#f87171", fontWeight: 500, fontSize: 14, cursor: "pointer" }}
+                    >
+                      Delete Event
+                    </button>
+                  )}
                 </div>
 
               </div>
@@ -425,6 +514,78 @@ const Profile: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* Following overlay */}
+      {followingModalOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
+          onClick={() => setFollowingModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: 380, maxWidth: "calc(100vw - 32px)", maxHeight: "75vh", display: "flex", flexDirection: "column", borderRadius: 24, backgroundColor: "#16181D", boxShadow: "0 12px 48px rgba(0,0,0,0.55)", overflow: "hidden" }}
+          >
+            <div style={{ padding: "18px 18px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #2e3138", flexShrink: 0 }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: "#fff" }}>Following</span>
+              <button onClick={() => setFollowingModalOpen(false)} style={{ background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "#aaa", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {loadingFollowing ? (
+                <p style={{ color: "#6b7280", textAlign: "center", marginTop: 24 }}>Loading…</p>
+              ) : following.length === 0 ? (
+                <p style={{ color: "#4b5563", textAlign: "center", marginTop: 24 }}>Not following anyone yet.</p>
+              ) : following.map((u) => (
+                <div key={u.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 12, backgroundColor: "#23262d" }}>
+                  <div>
+                    <p style={{ margin: 0, color: "#f3f4f6", fontWeight: 600, fontSize: 14 }}>{u.username ?? `User ${u.id}`}</p>
+                    <p style={{ margin: 0, color: "#6b7280", fontSize: 12 }}>{u.status ?? "Offline"}</p>
+                  </div>
+                  <button
+                    onClick={() => { setFollowingModalOpen(false); router.push(`/users/${u.id}`); }}
+                    style={{ padding: "4px 14px", borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#d1d5db", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >View</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Followers overlay */}
+      {followersModalOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 1100, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
+          onClick={() => setFollowersModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: 380, maxWidth: "calc(100vw - 32px)", maxHeight: "75vh", display: "flex", flexDirection: "column", borderRadius: 24, backgroundColor: "#16181D", boxShadow: "0 12px 48px rgba(0,0,0,0.55)", overflow: "hidden" }}
+          >
+            <div style={{ padding: "18px 18px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #2e3138", flexShrink: 0 }}>
+              <span style={{ fontWeight: 700, fontSize: 16, color: "#fff" }}>Followers</span>
+              <button onClick={() => setFollowersModalOpen(false)} style={{ background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "#aaa", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {loadingFollowers ? (
+                <p style={{ color: "#6b7280", textAlign: "center", marginTop: 24 }}>Loading…</p>
+              ) : followers.length === 0 ? (
+                <p style={{ color: "#4b5563", textAlign: "center", marginTop: 24 }}>No followers yet.</p>
+              ) : followers.map((u) => (
+                <div key={u.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 12, backgroundColor: "#23262d" }}>
+                  <div>
+                    <p style={{ margin: 0, color: "#f3f4f6", fontWeight: 600, fontSize: 14 }}>{u.username ?? `User ${u.id}`}</p>
+                    <p style={{ margin: 0, color: "#6b7280", fontSize: 12 }}>{u.status ?? "Offline"}</p>
+                  </div>
+                  <button
+                    onClick={() => { setFollowersModalOpen(false); router.push(`/users/${u.id}`); }}
+                    style={{ padding: "4px 14px", borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#d1d5db", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >View</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
