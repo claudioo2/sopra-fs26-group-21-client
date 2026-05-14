@@ -507,6 +507,7 @@ export default function MapPage() {
                 const notifIcon = event.category ? CATEGORY_ICONS[event.category] : CATEGORY_ICONS.OTHER;
                 notificationApi.open({
                   key,
+                  title: event.title,
                   message: (
                     <span style={{ color: "#f3f4f6", fontWeight: 700, fontSize: 14 }}>
                       {event.title}
