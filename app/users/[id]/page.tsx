@@ -6,7 +6,7 @@ import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { User } from "@/types/user";
 import { EventDTO, EventCategory } from "@/types/event";
-import { App, Button, Form, Input, Modal } from "antd";
+import { App, Button, Form, Input } from "antd";
 import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, KeyOutlined, CompassOutlined, UserOutlined } from "@ant-design/icons";
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
@@ -18,6 +18,19 @@ const CATEGORY_COLORS: Record<EventCategory, string> = {
   SPORTS: "#f97316", MUSIC: "#a855f7", FOOD: "#f43f5e", ART: "#ec4899",
   SOCIAL: "#3b82f6", OUTDOOR: "#22c55e", PARTY: "#eab308", OTHER: "#94a3b8",
 };
+
+const CATEGORY_ICONS: Record<EventCategory, string> = {
+  SPORTS:  `<polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  MUSIC:   `<path d="M9 18V5l12-2v13" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="6" cy="18" r="3" stroke="white" stroke-width="2" fill="none"/><circle cx="18" cy="16" r="3" stroke="white" stroke-width="2" fill="none"/>`,
+  FOOD:    `<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M7 2v20" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>`,
+  ART:     `<circle cx="13.5" cy="6.5" r=".5" fill="white"/><circle cx="17.5" cy="10.5" r=".5" fill="white"/><circle cx="8.5" cy="7.5" r=".5" fill="white"/><circle cx="6.5" cy="12.5" r=".5" fill="white"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" stroke="white" stroke-width="2" fill="none"/>`,
+  SOCIAL:  `<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="9" cy="7" r="4" stroke="white" stroke-width="2" fill="none"/><path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>`,
+  OUTDOOR: `<path d="m8 3 4 8 5-5 5 15H2L8 3z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>`,
+  PARTY:   `<path d="M5.8 11.3 2 22l10.7-3.79" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M4 3h.01" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M22 8h.01" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M15 2h.01" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M22 20h.01" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12v0c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11v0c-.11.7-.72 1.22-1.43 1.22H17" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98v0C9.52 4.9 9 5.52 9 6.23V7" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2z" stroke="white" stroke-width="2" fill="none"/>`,
+  OTHER:   `<circle cx="12" cy="12" r="10" stroke="white" stroke-width="2" fill="none"/><path d="M12 8v4" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/><path d="M12 16h.01" stroke="white" stroke-width="2" stroke-linecap="round" fill="none"/>`,
+};
+
+const AVATAR_GRADIENT = "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)";
 
 const Profile: React.FC = () => {
   const router = useRouter();
@@ -37,34 +50,22 @@ const Profile: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
   const [inviteCode, setInviteCode] = useState("");
   const [joiningByCode, setJoiningByCode] = useState(false);
+  const [leavingEvent, setLeavingEvent] = useState(false);
   const { message: messageApi } = App.useApp();
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
 
   useEffect(() => {
-    if (!isMounted) {
-      setIsMounted(true);
-      return;
-    }
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    if (!isMounted) { setIsMounted(true); return; }
+    if (!token) { router.push("/login"); return; }
     const fetchData = async () => {
       try {
-        const fetched = await apiService.get<User>(`/users/${profileId}`, {
-          Authorization: `Bearer ${token}`,
-        });
+        const fetched = await apiService.get<User>(`/users/${profileId}`, { Authorization: `Bearer ${token}` });
         setUser(fetched);
-
-        const fetchedEvents = await apiService.get<EventDTO[]>(`/users/${profileId}/events`, {
-          Authorization: `Bearer ${token}`,
-        });
+        const fetchedEvents = await apiService.get<EventDTO[]>(`/users/${profileId}/events`, { Authorization: `Bearer ${token}` });
         setEvents(fetchedEvents);
       } catch (error) {
-        if (error instanceof Error) {
-          alert(`Could not load profile:\n${error.message}`);
-        }
+        if (error instanceof Error) alert(`Could not load profile:\n${error.message}`);
         router.push("/map");
       }
     };
@@ -79,16 +80,11 @@ const Profile: React.FC = () => {
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      const updated = await apiService.put<User>(`/users/${profileId}`, {
-        username: values.username,
-        bio: values.bio,
-      });
+      const updated = await apiService.put<User>(`/users/${profileId}`, { username: values.username, bio: values.bio });
       setUser(updated);
       setEditing(false);
     } catch (error) {
-      if (error instanceof Error) {
-        alert(`Could not update profile:\n${error.message}`);
-      }
+      if (error instanceof Error) alert(`Could not update profile:\n${error.message}`);
     }
   };
 
@@ -102,9 +98,7 @@ const Profile: React.FC = () => {
     router.push("/login");
   };
 
-  const handleFollowToggle = () => {
-    setIsFollowing((prev) => !prev);
-  };
+  const handleFollowToggle = () => setIsFollowing((prev) => !prev);
 
   const handleJoinByCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,220 +122,310 @@ const Profile: React.FC = () => {
     }
   };
 
-  return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", display: "flex", flexDirection: "column" }}>
+  const handleLeaveEvent = async (event: EventDTO) => {
+    setLeavingEvent(true);
+    try {
+      await apiService.delete(`/events/${event.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
+      setEvents((prev) => prev.filter((e) => e.id !== event.id));
+      setSelectedEvent(null);
+      messageApi.success("You left the event.");
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : "Failed to leave event");
+    } finally {
+      setLeavingEvent(false);
+    }
+  };
 
+  const fmt = (d: string) => {
+    const dt = new Date(d);
+    return `${dt.getDate()}.${dt.getMonth() + 1}.${dt.getFullYear()} · ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: `linear-gradient(180deg, #833ab4 0%, #fd1d1d22 10%, #0a0a0a 28%)`, backgroundColor: "#0a0a0a", display: "flex", flexDirection: "column" }}>
+
+      {/* Scrollable content */}
       <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px 24px" }}>
 
-      {/* Top bar */}
-      <div style={{ width: "100%", maxWidth: 480, display: "flex", alignItems: "center", padding: "16px 0", gap: 12 }}>
-        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => router.push("/map")} style={{ color: "#fff", fontSize: 16 }} />
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
-          <span style={{ color: "#fff", fontWeight: 600, fontSize: 17 }}>{user?.username ?? "Profile"}</span>
-          {!isOwnProfile && (
-            <Button size="small" onClick={handleFollowToggle} style={{ backgroundColor: isFollowing ? "#1c1c1c" : "#3897f0", borderColor: isFollowing ? "#333" : "#3897f0", color: "#fff", borderRadius: 8, fontWeight: 600 }}>
-              {isFollowing ? "Following" : "Follow"}
-            </Button>
+        {/* Top bar */}
+        <div style={{ width: "100%", maxWidth: 480, display: "flex", alignItems: "center", padding: "16px 0", gap: 12 }}>
+          <button
+            onClick={() => router.push("/map")}
+            style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          >
+            <ArrowLeftOutlined />
+          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+            <span style={{ color: "#fff", fontWeight: 700, fontSize: 17 }}>{user?.username ?? "Profile"}</span>
+            {!isOwnProfile && (
+              <button
+                onClick={handleFollowToggle}
+                style={{ padding: "4px 14px", borderRadius: 999, border: `1.5px solid ${isFollowing ? "#444" : "#3897f0"}`, backgroundColor: isFollowing ? "transparent" : "#3897f0", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                {isFollowing ? "Following" : "Follow"}
+              </button>
+            )}
+          </div>
+          {isOwnProfile && !editing && (
+            <button onClick={handleEdit} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <EditOutlined />
+            </button>
           )}
-        </div>
-        {isOwnProfile && !editing && (
-          <Button type="text" icon={<EditOutlined />} onClick={handleEdit} style={{ color: "#fff", marginLeft: "auto" }} />
-        )}
-        {editing && (
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-            <Button type="text" icon={<CloseOutlined />} onClick={() => setEditing(false)} style={{ color: "#aaa" }} />
-            <Button type="text" icon={<CheckOutlined />} onClick={handleSave} style={{ color: "#3897f0" }} />
-          </div>
-        )}
-      </div>
-
-      <div style={{ width: "100%", maxWidth: 480 }}>
-        {/* Avatar */}
-        <div style={{ display: "flex", alignItems: "center", gap: 32, marginBottom: 20 }}>
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            <div style={{ width: 86, height: 86, borderRadius: "50%", background: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#fff", letterSpacing: 1 }}>
-              {initials}
-            </div>
-            <div style={{ position: "absolute", bottom: 4, right: 4, width: 14, height: 14, borderRadius: "50%", backgroundColor: isOnline ? "#22c55e" : "#6b7280", border: "2px solid #0a0a0a" }} />
-          </div>
-          <span style={{ fontSize: 13, color: isOnline ? "#22c55e" : "#6b7280", fontWeight: 500 }}>
-            {isOnline ? "Online" : "Offline"}
-          </span>
-        </div>
-
-        {/* Username + bio */}
-        {!editing ? (
-          <div style={{ marginBottom: 24 }}>
-            <p style={{ margin: "0 0 4px 0", color: "#fff", fontWeight: 600, fontSize: 15 }}>{user?.username}</p>
-            <p style={{ margin: 0, color: user?.bio ? "#d1d5db" : "#6b7280", fontSize: 14, lineHeight: 1.5 }}>{user?.bio ?? "No bio yet."}</p>
-          </div>
-        ) : (
-          <Form form={form} layout="vertical" style={{ marginBottom: 24 }}>
-            <Form.Item name="username" rules={[{ required: true, message: "Username is required" }]} style={{ marginBottom: 12 }}>
-              <Input placeholder="Username" style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff" }} />
-            </Form.Item>
-            <Form.Item name="bio" style={{ marginBottom: 0 }}>
-              <Input.TextArea rows={3} placeholder="Write a bio…" style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", resize: "none" }} />
-            </Form.Item>
-          </Form>
-        )}
-
-        {isOwnProfile && (
-          <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-            <Button onClick={() => router.push(`/users/${profileId}/followers`)} style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 8, fontWeight: 500 }}>
-              View Followers
-            </Button>
-            <Button onClick={handleLogout} style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 8, fontWeight: 500 }}>
-              Logout
-            </Button>
-          </div>
-        )}
-
-        {/* Divider */}
-        <div style={{ borderTop: "1px solid #1f1f1f", marginBottom: 24, marginTop: 24 }} />
-
-        {/* Join with code */}
-        <div style={{ marginBottom: 24 }}>
-          <p style={{ color: "#fff", fontWeight: 600, fontSize: 15, margin: "0 0 10px 0" }}>Join with invite code</p>
-          <form onSubmit={handleJoinByCode} style={{ display: "flex", gap: 8 }}>
-            <div style={{ position: "relative", flex: 1 }}>
-              <KeyOutlined style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: 14, pointerEvents: "none" }} />
-              <input
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                placeholder="Enter invite code"
-                style={{ width: "100%", padding: "0 12px 0 30px", height: 38, borderRadius: 8, border: "1px solid #333", backgroundColor: "#1c1c1c", color: "#fff", fontSize: 14, outline: "none" }}
-              />
-            </div>
-            <Button htmlType="submit" loading={joiningByCode} style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 8 }}>
-              Join
-            </Button>
-          </form>
-        </div>
-
-        {/* Events section */}
-        <div style={{ marginBottom: 24 }}>
-          <p style={{ color: "#fff", fontWeight: 600, fontSize: 15, margin: "0 0 12px 0" }}>
-            Events joined ({events.length})
-          </p>
-          {events.length === 0 ? (
-            <p style={{ color: "#6b7280", fontSize: 14 }}>No events joined yet.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {events.map((event) => (
-                <div
-                  key={event.id}
-                  onClick={() => setSelectedEvent(event)}
-                  style={{ backgroundColor: "#16181D", borderRadius: 12, padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: "1px solid #2e3138" }}
-                >
-                  {event.category && (
-                    <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: CATEGORY_COLORS[event.category], flexShrink: 0 }} />
-                  )}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, color: "#fff", fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {event.title}
-                    </p>
-                    <p style={{ margin: 0, color: "#6b7280", fontSize: 12, marginTop: 2 }}>
-                      {new Date(event.startTime).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}
-                    </p>
-                  </div>
-                  {event.isPrivate && (
-                    <span style={{ fontSize: 11, color: "#6b7280", backgroundColor: "#23262d", padding: "2px 8px", borderRadius: 999 }}>Private</span>
-                  )}
-                </div>
-              ))}
+          {editing && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setEditing(false)} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#aaa", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <CloseOutlined />
+              </button>
+              <button onClick={handleSave} style={{ background: "rgba(56,151,240,0.2)", border: "1.5px solid #3897f0", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#3897f0", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <CheckOutlined />
+              </button>
             </div>
           )}
         </div>
 
-      </div>
+        <div style={{ width: "100%", maxWidth: 480 }}>
 
-      {/* Event detail modal */}
-      </div>{/* end scrollable content */}
-
-      {/* Bottom navigation */}
-      <div style={{ height: 64, paddingBottom: 12, backgroundColor: "#16181D", borderTop: "1px solid #2a2d35", display: "flex", alignItems: "center", flexShrink: 0 }}>
-        <button
-          onClick={() => router.push("/map")}
-          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "#888", fontSize: 11, fontWeight: 500 }}
-        >
-          <CompassOutlined style={{ fontSize: 22 }} />
-          <span>Explore</span>
-        </button>
-        <button
-          onClick={() => router.push(`/users/${profileId}`)}
-          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "#75bd9d", fontSize: 11, fontWeight: 500 }}
-        >
-          <UserOutlined style={{ fontSize: 22 }} />
-          <span>Profile</span>
-        </button>
-      </div>
-
-      <Modal
-        open={selectedEvent !== null}
-        onCancel={() => setSelectedEvent(null)}
-        footer={null}
-        title={<span style={{ color: "#111827" }}>{selectedEvent?.title}</span>}
-        styles={{ header: { color: "#111827" } }}
-        width={480}
-      >
-        {selectedEvent && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {selectedEvent.category && (
-              <div>
-                <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: "999px", backgroundColor: CATEGORY_COLORS[selectedEvent.category], color: "#fff", fontSize: "12px", fontWeight: 600 }}>
-                  {CATEGORY_LABELS[selectedEvent.category]}
+          {/* Avatar + info row */}
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 20, marginBottom: 18 }}>
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <div style={{ width: 86, height: 86, borderRadius: "50%", background: AVATAR_GRADIENT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#fff", letterSpacing: 1, boxShadow: "0 4px 20px rgba(131,58,180,0.4)" }}>
+                {initials}
+              </div>
+              <div style={{ position: "absolute", bottom: 4, right: 4, width: 14, height: 14, borderRadius: "50%", backgroundColor: isOnline ? "#22c55e" : "#6b7280", border: "2px solid #0a0a0a" }} />
+            </div>
+            <div style={{ flex: 1, paddingBottom: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: isOnline ? "#22c55e" : "#6b7280", textTransform: "uppercase", letterSpacing: 1 }}>
+                  {isOnline ? "● Online" : "○ Offline"}
                 </span>
               </div>
-            )}
-            <div>
-              <span style={{ color: "#6b7280", fontSize: "12px" }}>Description</span>
-              <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.description ?? "—"}</p>
+              <p style={{ margin: "0 0 2px 0", color: "#fff", fontWeight: 700, fontSize: 18 }}>{user?.username}</p>
             </div>
-            <div style={{ display: "flex", gap: "24px" }}>
-              <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>Organizer</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.creatorUsername ?? "—"}</p>
-              </div>
-              <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>Participants</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.participantCount ?? 0}</p>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "24px" }}>
-              <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>Start</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.startTime).toLocaleString()}</p>
-              </div>
-              <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>End</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.endTime).toLocaleString()}</p>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <Button type="primary" block onClick={() => router.push(`/map?openChat=${selectedEvent.id}`)}>
-                Join Chat
-              </Button>
-              {Number(userId) !== selectedEvent.creatorId && (
-                <Button danger block onClick={async () => {
-                  try {
-                    await apiService.delete(`/events/${selectedEvent.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
-                    setEvents((prev) => prev.filter((e) => e.id !== selectedEvent.id));
-                    setSelectedEvent(null);
-                  } catch (error) {
-                    alert(error instanceof Error ? error.message : "Failed to leave event");
-                  }
-                }}>
-                  Leave Event
-                </Button>
-              )}
-            </div>
-            <Button block onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}>
-              View Board
-            </Button>
           </div>
-        )}
-      </Modal>
+
+          {/* Bio / edit form */}
+          {!editing ? (
+            <p style={{ margin: "0 0 20px 0", color: user?.bio ? "#d1d5db" : "#4b5563", fontSize: 14, lineHeight: 1.6 }}>
+              {user?.bio ?? "No bio yet."}
+            </p>
+          ) : (
+            <Form form={form} layout="vertical" style={{ marginBottom: 20 }}>
+              <Form.Item name="username" rules={[{ required: true, message: "Username is required" }]} style={{ marginBottom: 12 }}>
+                <Input placeholder="Username" style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 10 }} />
+              </Form.Item>
+              <Form.Item name="bio" style={{ marginBottom: 0 }}>
+                <Input.TextArea rows={3} placeholder="Write a bio…" style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", resize: "none", borderRadius: 10 }} />
+              </Form.Item>
+            </Form>
+          )}
+
+          {/* Action buttons */}
+          {isOwnProfile && (
+            <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
+              <button
+                onClick={() => router.push(`/users/${profileId}/followers`)}
+                style={{ flex: 1, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#d1d5db", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
+              >
+                Followers
+              </button>
+              <button
+                onClick={handleLogout}
+                style={{ flex: 1, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#f87171", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
+              >
+                Logout
+              </button>
+            </div>
+          )}
+
+          {/* Divider */}
+          <div style={{ borderTop: "1px solid #1f1f1f", marginBottom: 24 }} />
+
+          {/* Join with invite code */}
+          <div style={{ marginBottom: 24 }}>
+            <p style={{ color: "#9ca3af", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 10px 0" }}>Join with invite code</p>
+            <form onSubmit={handleJoinByCode} style={{ display: "flex", gap: 8 }}>
+              <div style={{ position: "relative", flex: 1 }}>
+                <KeyOutlined style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#6b7280", fontSize: 13, pointerEvents: "none" }} />
+                <input
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  placeholder="Enter invite code"
+                  style={{ width: "100%", padding: "0 14px 0 34px", height: 42, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={joiningByCode || !inviteCode.trim()}
+                style={{ height: 42, borderRadius: 999, border: "none", backgroundColor: "#833ab4", color: "#fff", fontSize: 13, fontWeight: 700, padding: "0 18px", cursor: "pointer", opacity: (!inviteCode.trim() || joiningByCode) ? 0.5 : 1, flexShrink: 0 }}
+              >
+                {joiningByCode ? "…" : "Join"}
+              </button>
+            </form>
+          </div>
+
+          {/* Events section */}
+          <div style={{ marginBottom: 24 }}>
+            <p style={{ color: "#9ca3af", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px 0" }}>
+              Events · {events.length}
+            </p>
+            {events.length === 0 ? (
+              <p style={{ color: "#4b5563", fontSize: 14, textAlign: "center", marginTop: 20 }}>No events joined yet.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {events.map((event) => {
+                  const catColor = event.category ? CATEGORY_COLORS[event.category] : "#94a3b8";
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => setSelectedEvent(event)}
+                      style={{ backgroundColor: "#16181D", borderRadius: 14, padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: "1px solid #2e3138", transition: "border-color 0.15s" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = catColor + "66")}
+                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#2e3138")}
+                    >
+                      <div style={{ width: 38, height: 38, borderRadius: "50%", backgroundColor: catColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        {event.category && (
+                          <svg viewBox="0 0 24 24" width="18" height="18" dangerouslySetInnerHTML={{ __html: CATEGORY_ICONS[event.category] }} />
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, color: "#fff", fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {event.title}
+                        </p>
+                        <p style={{ margin: "2px 0 0 0", color: "#6b7280", fontSize: 12 }}>
+                          {new Date(event.startTime).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}
+                          {event.category && <span style={{ color: catColor, marginLeft: 6, fontWeight: 500 }}>{CATEGORY_LABELS[event.category]}</span>}
+                        </p>
+                      </div>
+                      {event.isPrivate && (
+                        <span style={{ fontSize: 10, color: "#6b7280", backgroundColor: "#23262d", padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>Private</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>{/* end scrollable */}
+
+      {/* Bottom navigation */}
+      <div style={{ height: 72, paddingBottom: 8, backgroundColor: "#16181D", borderTop: "1px solid #2a2d35", display: "flex", alignItems: "center", flexShrink: 0 }}>
+        <button
+          onClick={() => router.push("/map")}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 }}
+        >
+          <CompassOutlined style={{ fontSize: 22, color: "#6b7280" }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#6b7280" }}>Explore</span>
+          <div style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "transparent" }} />
+        </button>
+
+        {/* spacer — mirrors the FAB slot on the map page */}
+        <div style={{ flex: 1 }} />
+
+        <button
+          onClick={() => router.push(`/users/${profileId}`)}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 }}
+        >
+          <UserOutlined style={{ fontSize: 22, color: "#fff" }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>Profile</span>
+          <div style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#833ab4" }} />
+        </button>
+      </div>
+
+      {/* Event detail overlay */}
+      {selectedEvent && (() => {
+        const catColor = selectedEvent.category ? CATEGORY_COLORS[selectedEvent.category] : "#75bd9d";
+        const catIcon = selectedEvent.category ? CATEGORY_ICONS[selectedEvent.category] : CATEGORY_ICONS.OTHER;
+        const isCreator = Number(userId) === selectedEvent.creatorId;
+        const card = { backgroundColor: "#23262d", borderRadius: 16, padding: "14px 16px", boxShadow: "0 1px 6px rgba(0,0,0,0.25)" };
+        const label = { color: "#6b7280", fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1 };
+        const value = { margin: "5px 0 0 0", color: "#f3f4f6", fontWeight: 600, fontSize: 15 };
+        return (
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }}
+            onClick={() => setSelectedEvent(null)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: 400, maxWidth: "calc(100vw - 32px)", maxHeight: "88vh", overflowY: "auto", borderRadius: 24, boxShadow: "0 12px 48px rgba(0,0,0,0.5)", background: `linear-gradient(180deg, ${catColor} 0%, ${catColor}99 18%, ${catColor}33 40%, #16181D 62%)` }}
+            >
+              <div style={{ padding: "20px 18px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
+
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 52, height: 52, borderRadius: "50%", background: `linear-gradient(135deg, ${catColor}55, ${catColor})`, border: `2px solid ${catColor}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg viewBox="0 0 24 24" width="22" height="22" dangerouslySetInnerHTML={{ __html: catIcon }} />
+                    </div>
+                    <div>
+                      <h2 style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 700, lineHeight: 1.2 }}>{selectedEvent.title}</h2>
+                      {selectedEvent.category && <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>{CATEGORY_LABELS[selectedEvent.category]}</span>}
+                    </div>
+                  </div>
+                  <button onClick={() => setSelectedEvent(null)} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "rgba(255,255,255,0.8)", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>×</button>
+                </div>
+
+                {/* Description */}
+                <div style={card}>
+                  <span style={label}>Description</span>
+                  <p style={{ ...value, fontWeight: 400, fontSize: 14, lineHeight: 1.6, color: "#d1d5db" }}>{selectedEvent.description ?? "No description."}</p>
+                </div>
+
+                {/* Organizer + Participants */}
+                <div style={{ display: "flex", gap: 10 }}>
+                  <div style={{ ...card, flex: 1 }}>
+                    <span style={label}>Organizer</span>
+                    <p style={value}>{selectedEvent.creatorUsername ?? "—"}</p>
+                  </div>
+                  <div style={{ ...card, flex: 1 }}>
+                    <span style={label}>Participants</span>
+                    <p style={value}>{selectedEvent.participantCount ?? 0}</p>
+                  </div>
+                </div>
+
+                {/* Dates */}
+                <div style={card}>
+                  <span style={label}>Start</span>
+                  <p style={{ ...value, marginBottom: 12 }}>{fmt(selectedEvent.startTime)}</p>
+                  <div style={{ height: 1, backgroundColor: "#2e3138", margin: "0 0 12px" }} />
+                  <span style={label}>End</span>
+                  <p style={{ ...value, marginBottom: 0 }}>{fmt(selectedEvent.endTime)}</p>
+                </div>
+
+                {/* Buttons */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => router.push(`/map?openChat=${selectedEvent.id}`)}
+                      style={{ flex: 1, height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
+                    >
+                      Join Chat
+                    </button>
+                    {!isCreator && (
+                      <button
+                        onClick={() => handleLeaveEvent(selectedEvent)}
+                        disabled={leavingEvent}
+                        style={{ flex: 1, height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f87171", fontWeight: 600, fontSize: 14, cursor: "pointer", opacity: leavingEvent ? 0.6 : 1 }}
+                      >
+                        {leavingEvent ? "Leaving…" : "Leave"}
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}
+                    style={{ width: "100%", height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f3f4f6", fontWeight: 500, fontSize: 14, cursor: "pointer" }}
+                  >
+                    View Board
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
     </div>
   );
 };

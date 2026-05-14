@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Supercluster from "supercluster";
-import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal, Select } from "antd";
+import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Select } from "antd";
 import { LockOutlined, GlobalOutlined, PlusOutlined, CompassOutlined, UserOutlined, KeyOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
@@ -330,6 +330,8 @@ export default function MapPage() {
       if (!map.getContainer()?.isConnected) return;
 
       clusters.forEach((feat) => {
+        if (!map.getContainer()?.isConnected) return;
+
         const [lng, lat] = feat.geometry.coordinates as [number, number];
         const props = feat.properties as Supercluster.AnyProps;
 
@@ -464,12 +466,34 @@ export default function MapPage() {
                   ? msg.content.slice(0, 60) + "…"
                   : msg.content;
                 const key = `msg-${event.id}-${Date.now()}`;
+                const notifColor = event.category ? CATEGORY_COLORS[event.category] : "#75bd9d";
+                const notifIcon = event.category ? CATEGORY_ICONS[event.category] : CATEGORY_ICONS.OTHER;
                 notificationApi.open({
                   key,
-                  title: event.title,
-                  description: `${msg.senderUsername}: ${preview}`,
+                  message: (
+                    <span style={{ color: "#f3f4f6", fontWeight: 700, fontSize: 14 }}>
+                      {event.title}
+                    </span>
+                  ),
+                  description: (
+                    <span style={{ color: "#9ca3af", fontSize: 13 }}>
+                      <span style={{ color: notifColor, fontWeight: 600 }}>{msg.senderUsername}</span>
+                      {": "}{preview}
+                    </span>
+                  ),
+                  icon: (
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", backgroundColor: notifColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg viewBox="0 0 24 24" width="18" height="18" dangerouslySetInnerHTML={{ __html: notifIcon }} />
+                    </div>
+                  ),
+                  style: {
+                    backgroundColor: "#16181D",
+                    border: `1px solid ${notifColor}55`,
+                    borderRadius: 16,
+                    boxShadow: `0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px ${notifColor}22`,
+                    cursor: "pointer",
+                  },
                   duration: 6,
-                  style: { cursor: "pointer" },
                   onClick: () => {
                     notificationApi.destroy(key);
                     handleOpenChat(event);
@@ -970,125 +994,83 @@ export default function MapPage() {
     <main style={{ position: "relative", height: "100vh", display: "flex", flexDirection: "column" }}>
       <div style={{ flex: 1, minHeight: 0, display: "flex", position: "relative", overflow: "hidden" }}>
         {/* Chat panel — left side */}
-        {chatOpen && chatEventRef.current && (
-          <div
-            style={{
-              width: "360px",
-              height: "100%",
-              backgroundColor: "#16181D",
-              boxShadow: "2px 0 8px rgba(0,0,0,0.4)",
-              display: "flex",
-              flexDirection: "column",
-              flexShrink: 0,
-            }}
-          >
-            {/* Chat header */}
-            <div
-              style={{
-                padding: "12px 16px",
-                borderBottom: "1px solid #2e3138",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                flexShrink: 0,
-              }}
-            >
-              <Button type="text" onClick={handleCloseChat} style={{ color: "#aaa", padding: "0 4px" }}>
-                ←
-              </Button>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ margin: 0, fontSize: "15px", color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {chatEventRef.current.title}
-                </h3>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>
-                  {chatEventRef.current.participantCount ?? 0} participant{chatEventRef.current.participantCount !== 1 ? "s" : ""}
-                </span>
-              </div>
-            </div>
+        {chatOpen && chatEventRef.current && (() => {
+          const chatEvent = chatEventRef.current!;
+          const catColor = chatEvent.category ? CATEGORY_COLORS[chatEvent.category] : "#75bd9d";
+          return (
+            <div style={{ width: "360px", height: "100%", display: "flex", flexDirection: "column", flexShrink: 0, background: `linear-gradient(180deg, ${catColor} 0%, ${catColor}99 10%, ${catColor}22 25%, #0a0a0a 45%)`, backgroundColor: "#0a0a0a", boxShadow: "2px 0 12px rgba(0,0,0,0.5)" }}>
 
-            {/* Messages */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                padding: "16px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              {chatMessages.length === 0 && (
-                <p style={{ color: "#6b7280", textAlign: "center", marginTop: "32px", fontSize: "13px" }}>
-                  No messages yet. Be the first to say something!
-                </p>
-              )}
-              {chatMessages.map((msg) => {
-                const isOwn = msg.senderUsername === user?.username;
-                return (
-                  <div
-                    key={msg.id}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: isOwn ? "flex-end" : "flex-start",
-                    }}
-                  >
-                    {!isOwn && (
-                      <span style={{ fontSize: "11px", color: "#9ca3af", marginBottom: "2px" }}>
-                        {msg.senderUsername}
-                      </span>
-                    )}
-                    <div
-                      style={{
-                        maxWidth: "80%",
-                        padding: "8px 12px",
-                        borderRadius: "12px",
-                        backgroundColor: "#2e3138",
+              {/* Header */}
+              <div style={{ padding: "16px 16px 14px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                <button onClick={handleCloseChat} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>←</button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {chatEvent.title}
+                  </h3>
+                  {chatEvent.category && (
+                    <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: "rgba(255,255,255,0.65)" }}>
+                      {CATEGORY_LABELS[chatEvent.category]} · {chatEvent.participantCount ?? 0} participants
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                {chatMessages.length === 0 && (
+                  <p style={{ color: "#6b7280", textAlign: "center", marginTop: 32, fontSize: 13 }}>
+                    No messages yet. Be the first!
+                  </p>
+                )}
+                {chatMessages.map((msg) => {
+                  const isOwn = msg.senderUsername === user?.username;
+                  return (
+                    <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: isOwn ? "flex-end" : "flex-start" }}>
+                      {!isOwn && (
+                        <span style={{ fontSize: 11, color: "#9ca3af", marginBottom: 3, marginLeft: 4 }}>{msg.senderUsername}</span>
+                      )}
+                      <div style={{
+                        maxWidth: "78%",
+                        padding: "9px 13px",
+                        borderRadius: isOwn ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                        backgroundColor: isOwn ? catColor : "#23262d",
                         color: "#fff",
-                        fontSize: "14px",
+                        fontSize: 14,
                         wordBreak: "break-word",
                         overflowWrap: "anywhere",
-                      }}
-                    >
-                      {msg.content}
+                        lineHeight: 1.45,
+                      }}>
+                        {msg.content}
+                      </div>
+                      <span style={{ fontSize: 10, color: "#6b7280", marginTop: 3, marginLeft: isOwn ? 0 : 4, marginRight: isOwn ? 4 : 0 }}>
+                        {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
                     </div>
-                    <span style={{ fontSize: "10px", color: "#6b7280", marginTop: "2px" }}>
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
-                );
-              })}
-              <div ref={chatBottomRef} />
-            </div>
+                  );
+                })}
+                <div ref={chatBottomRef} />
+              </div>
 
-            {/* Input */}
-            <div
-              style={{
-                padding: "12px 16px",
-                borderTop: "1px solid #2e3138",
-                display: "flex",
-                gap: "8px",
-                flexShrink: 0,
-              }}
-            >
-              <Input
-                placeholder="Type a message…"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onPressEnter={handleSendMessage}
-                style={{ backgroundColor: "#23262d", borderColor: "#444", color: "#fff" }}
-              />
-              <Button
-                type="primary"
-                onClick={handleSendMessage}
-                disabled={!chatInput.trim() || !stompConnected}
-                style={{ color: "#fff" }}
-              >
-                {stompConnected ? "Send" : "Connecting…"}
-              </Button>
+              {/* Input */}
+              <div style={{ padding: "12px 14px 16px", display: "flex", gap: 8, flexShrink: 0 }}>
+                <input
+                  placeholder="Type a message…"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                  style={{ flex: 1, height: 42, borderRadius: 999, border: "1px solid #2e3138", backgroundColor: "#23262d", color: "#fff", padding: "0 16px", fontSize: 14, outline: "none" }}
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!chatInput.trim() || !stompConnected}
+                  style={{ height: 42, borderRadius: 999, border: "none", backgroundColor: catColor, color: "#fff", fontWeight: 600, fontSize: 13, padding: "0 18px", cursor: "pointer", opacity: (!chatInput.trim() || !stompConnected) ? 0.5 : 1, flexShrink: 0 }}
+                >
+                  {stompConnected ? "Send" : "…"}
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Map */}
         <div style={{ flex: 1, position: "relative" }}>
@@ -1103,26 +1085,25 @@ export default function MapPage() {
             display: "flex",
             alignItems: "center",
             gap: 8,
-            backgroundColor: "rgba(255,255,255,0.88)",
-            backdropFilter: "blur(6px)",
+            backgroundColor: "rgba(0,0,0,0.82)",
+            backdropFilter: "blur(8px)",
             borderRadius: "999px",
             padding: "6px 14px 6px 8px",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+            boxShadow: "0 2px 12px rgba(0,0,0,0.35)",
           }}>
-            <svg width="38" height="38" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="18" height="24" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
-                <radialGradient id="logo-bg" cx="38%" cy="35%" r="65%">
-                  <stop offset="0%" stopColor="#86efac"/>
-                  <stop offset="50%" stopColor="#22c55e"/>
-                  <stop offset="100%" stopColor="#065f46"/>
-                </radialGradient>
+                <linearGradient id="pin-grad" x1="10%" y1="0%" x2="90%" y2="100%">
+                  <stop offset="0%" stopColor="#833ab4"/>
+                  <stop offset="50%" stopColor="#fd1d1d"/>
+                  <stop offset="100%" stopColor="#fcb045"/>
+                </linearGradient>
               </defs>
-              <circle cx="20" cy="20" r="19" fill="url(#logo-bg)"/>
-              <rect x="18.8" y="23" width="2.4" height="9" rx="1.2" fill="#cbd5e1" opacity="0.85"/>
-              <circle cx="20" cy="18" r="6.5" fill="#ef4444"/>
-              <circle cx="17.8" cy="15.8" r="2" fill="white" opacity="0.4"/>
+              <path d="M14 1 C7 1 1 6.5 1 13 C1 20.5 14 35 14 35 C14 35 27 20.5 27 13 C27 6.5 21 1 14 1 Z" fill="url(#pin-grad)"/>
+              <circle cx="14" cy="12.5" r="5.5" fill="rgba(0,0,0,0.35)"/>
+              <path d="M15.5 7 L11 13.5 L14 13.5 L12.5 18.5 L17 12 L14 12 Z" fill="white"/>
             </svg>
-            <span style={{ fontWeight: 700, fontSize: 17, color: "#0f172a", letterSpacing: "-0.2px" }}>Spontaneo</span>
+            <span style={{ fontWeight: 700, fontSize: 17, color: "#fff", letterSpacing: "-0.2px" }}>Spontaneo</span>
           </div>
 
           {/* Filter pills overlay */}
@@ -1137,10 +1118,10 @@ export default function MapPage() {
             flexWrap: "wrap",
             justifyContent: "center",
             padding: "8px 12px",
-            backgroundColor: "rgba(255,255,255,0.88)",
-            backdropFilter: "blur(6px)",
+            backgroundColor: "rgba(16,18,24,0.82)",
+            backdropFilter: "blur(12px)",
             borderRadius: "999px",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.15)",
+            boxShadow: "0 2px 16px rgba(0,0,0,0.4)",
             maxWidth: "calc(100% - 32px)",
           }}>
             <button
@@ -1180,7 +1161,7 @@ export default function MapPage() {
             </button>
 
 
-            <div style={{ width: 1, height: 20, backgroundColor: "#d1d5db", margin: "0 2px", alignSelf: "center" }} />
+            <div style={{ width: 1, height: 20, backgroundColor: "#3a3f4a", margin: "0 2px", alignSelf: "center" }} />
 
             {ALL_CATEGORIES.map((cat) => {
               const active = activeCategories.has(cat);
@@ -1229,10 +1210,10 @@ export default function MapPage() {
               transform: "translate(-30px, -72px)",
               pointerEvents: "none", zIndex: 1,
             }}>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 78" width="60" height="78" style={{ filter: "drop-shadow(0 4px 10px rgba(0,0,0,0.4))" }}>
-                <circle cx="30" cy="30" r="28" fill="#22c55e"/>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 78" width="60" height="78" style={{ filter: "drop-shadow(0 4px 10px rgba(131,58,180,0.5))" }}>
+                <circle cx="30" cy="30" r="28" fill="#833ab4"/>
                 <circle cx="30" cy="30" r="28" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2"/>
-                <polygon points="30,76 20,52 40,52" fill="#22c55e"/>
+                <polygon points="30,76 20,52 40,52" fill="#833ab4"/>
                 <g transform="translate(14,14)">
                   <svg viewBox="0 0 24 24" width="32" height="32">
                     <path d="M12 5v14M5 12h14" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
@@ -1245,348 +1226,378 @@ export default function MapPage() {
 
         {/* Create event panel — right side */}
         {panelOpen && (
-          <div
-            style={{
-              width: "320px",
-              height: "100%",
-              backgroundColor: "#16181D",
-              boxShadow: "-2px 0 8px rgba(0,0,0,0.4)",
-              padding: "24px 20px",
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h2 style={{ margin: 0, fontSize: "18px" }}>Create Event</h2>
-              <Button type="text" onClick={closePanel} style={{ fontSize: "18px", lineHeight: 1 , color: "white"}}>
-                ×
-              </Button>
+          <div style={{ width: "320px", height: "100%", display: "flex", flexDirection: "column", flexShrink: 0, background: `linear-gradient(180deg, #833ab4 0%, #833ab499 8%, #833ab422 18%, #0a0a0a 32%)`, backgroundColor: "#0a0a0a", boxShadow: "-2px 0 12px rgba(0,0,0,0.5)" }}>
+
+            {/* Header */}
+            <div style={{ padding: "16px 16px 14px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              <button onClick={closePanel} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>←</button>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#fff" }}>Create Event</h2>
+                <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: "rgba(255,255,255,0.65)" }}>
+                  Pan the map to set location
+                </span>
+              </div>
             </div>
 
-            {/* Address search */}
-            <div style={{ marginBottom: "16px", position: "relative" }}>
-              <p style={{ color: "#aaa", fontSize: "12px", margin: "0 0 6px 0" }}>
-                Pan the map to position the green pin on your desired location, or search an address below.
-              </p>
-              <Input
-                placeholder="Search address (optional)"
-                value={addressQuery}
-                onChange={(e) => setAddressQuery(e.target.value)}
-                style={{ backgroundColor: "#23262d", borderColor: "#444", color: "#fff" }}
-              />
-              {addressSuggestions.length > 0 && (
-                <div style={{
-                  position: "absolute", zIndex: 10, width: "100%",
-                  backgroundColor: "#23262d", border: "1px solid #444",
-                  borderRadius: "6px", marginTop: "4px", overflow: "hidden",
-                }}>
-                  {addressSuggestions.map((s) => (
-                    <div
-                      key={s.place_name}
-                      onClick={() => selectSuggestion(s.center, s.place_name)}
-                      style={{ padding: "8px 12px", cursor: "pointer", color: "#fff", fontSize: "13px", borderBottom: "1px solid #333" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#2e3138")}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                    >
-                      {s.place_name}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {selectedLocation && (
-                <p style={{ color: "#666", fontSize: "11px", margin: "4px 0 0 0" }}>
-                  📍 {selectedLocation[1].toFixed(5)}, {selectedLocation[0].toFixed(5)}
-                </p>
-              )}
-            </div>
+            {/* Scrollable form area */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px 24px" }}>
 
-            <ConfigProvider theme={{
-              token: { colorBgContainer: "#16181D", colorText: "#fff", colorTextPlaceholder: "#888888", colorBgElevated: "#16181D", colorIcon: "#fff", colorIconHover: "#aaa", colorTextHeading: "#fff", colorTextDisabled: "#555" },
-              components: {
-                Segmented: {
-                  trackBg: "#fff",
-                  itemSelectedBg: "#000",
-                  itemSelectedColor: "#fff",
-                  itemColor: "#000",
-                  itemHoverColor: "#000",
-                  motionDurationSlow: ".15s",
-                  controlHeight: 40,
-                }
-              }
-            }}>
-              <Form form={form} layout="vertical" onFinish={handleSubmit} style={{ color: "black" }}>
-                <Form.Item
-                  label="Title"
-                  name="title"
-                  rules={[{ required: true, message: "Title is required" }]}
-                >
-                  <Input placeholder="Event title" />
-                </Form.Item>
-
-                <Form.Item
-                  label="Start Date"
-                  name="startDate"
-                  rules={[{ required: true, message: "Start date is required" }]}
-                >
-                  <DatePicker style={{ width: "100%" }} />
-                </Form.Item>
-
-                <Form.Item
-                  label="Start Time"
-                  name="startTime"
-                  rules={[{ required: true, message: "Start time is required" }]}
-                >
-                  <TimePicker style={{ width: "100%" }} format="HH:mm" />
-                </Form.Item>
-
-                <Form.Item
-                  label="End Date"
-                  name="endDate"
-                  rules={[{ required: true, message: "End date is required" }]}
-                >
-                  <DatePicker style={{ width: "100%" }} />
-                </Form.Item>
-
-                <Form.Item
-                  label="End Time"
-                  name="endTime"
-                  rules={[{ required: true, message: "End time is required" }]}
-                >
-                  <TimePicker style={{ width: "100%" }} format="HH:mm" />
-                </Form.Item>
-
-                <Form.Item
-                  label="Description"
-                  name="description"
-                  rules={[{ required: true, message: "Description is required" }]}
-                >
-                  <Input.TextArea placeholder="Brief description" rows={3} />
-                </Form.Item>
-
-                <Form.Item
-                  label="Category"
-                  name="category"
-                  rules={[{ required: true, message: "Category is required" }]}
-                >
-                  <Select placeholder="Select a category">
-                    {ALL_CATEGORIES.map((cat) => (
-                      <Select.Option key={cat} value={cat}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: CATEGORY_COLORS[cat], display: "inline-block" }} />
-                          {CATEGORY_LABELS[cat]}
-                        </span>
-                      </Select.Option>
+              {/* Address search */}
+              <div style={{ marginBottom: 16, position: "relative" }}>
+                <p style={{ color: "#6b7280", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 8px 0" }}>Location</p>
+                <input
+                  placeholder="Search address (optional)"
+                  value={addressQuery}
+                  onChange={(e) => setAddressQuery(e.target.value)}
+                  style={{ width: "100%", height: 40, borderRadius: 999, border: "1px solid #2e3138", backgroundColor: "#23262d", color: "#fff", padding: "0 14px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                />
+                {addressSuggestions.length > 0 && (
+                  <div style={{ position: "absolute", zIndex: 10, width: "100%", backgroundColor: "#23262d", border: "1px solid #2e3138", borderRadius: 12, marginTop: 4, overflow: "hidden" }}>
+                    {addressSuggestions.map((s) => (
+                      <div
+                        key={s.place_name}
+                        onClick={() => selectSuggestion(s.center, s.place_name)}
+                        style={{ padding: "9px 14px", cursor: "pointer", color: "#d1d5db", fontSize: 13, borderBottom: "1px solid #2e3138" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#2e3138")}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                      >
+                        {s.place_name}
+                      </div>
                     ))}
-                  </Select>
-                </Form.Item>
+                  </div>
+                )}
+                {selectedLocation && (
+                  <p style={{ color: "#4b5563", fontSize: 11, margin: "5px 0 0 4px" }}>
+                    📍 {selectedLocation[1].toFixed(5)}, {selectedLocation[0].toFixed(5)}
+                  </p>
+                )}
+              </div>
 
-                <Form.Item label="Privacy" name="privacy" initialValue="private">
-                  <Segmented
-                    style={{ caretColor: "transparent" }}
-                    options={[
-                      { label: <span><LockOutlined /> Private</span>, value: "private" },
-                      { label: <span><GlobalOutlined /> Public</span>, value: "public" },
-                    ]}
-                    block
-                  />
-                </Form.Item>
+              <ConfigProvider theme={{
+                token: {
+                  colorBgContainer: "#23262d",
+                  colorText: "#fff",
+                  colorTextPlaceholder: "#6b7280",
+                  colorBgElevated: "#23262d",
+                  colorBorder: "#2e3138",
+                  colorIcon: "#9ca3af",
+                  colorIconHover: "#fff",
+                  colorTextHeading: "#9ca3af",
+                  colorTextLabel: "#9ca3af",
+                  colorTextDisabled: "#4b5563",
+                  colorPrimary: "#833ab4",
+                  borderRadius: 10,
+                },
+                components: {
+                  Segmented: {
+                    trackBg: "#16181D",
+                    itemSelectedBg: "#833ab4",
+                    itemSelectedColor: "#fff",
+                    itemColor: "#9ca3af",
+                    itemHoverColor: "#fff",
+                    motionDurationSlow: ".15s",
+                    controlHeight: 40,
+                    borderRadius: 999,
+                    borderRadiusSM: 999,
+                    borderRadiusLG: 999,
+                  },
+                  Form: {
+                    labelColor: "#9ca3af",
+                    labelFontSize: 12,
+                  },
+                }
+              }}>
+                <Form form={form} layout="vertical" onFinish={handleSubmit}>
+                  <Form.Item label="Title" name="title" rules={[{ required: true, message: "Title is required" }]}>
+                    <Input placeholder="Event title" />
+                  </Form.Item>
 
-                <Form.Item style={{ marginBottom: 0 }}>
-                  <Button type="primary" htmlType="submit" block>
-                    Create
-                  </Button>
-                </Form.Item>
-              </Form>
-            </ConfigProvider>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Form.Item label="Start Date" name="startDate" rules={[{ required: true, message: "Required" }]} style={{ flex: 1 }}>
+                      <DatePicker style={{ width: "100%" }} />
+                    </Form.Item>
+                    <Form.Item label="Start Time" name="startTime" rules={[{ required: true, message: "Required" }]} style={{ flex: 1 }}>
+                      <TimePicker style={{ width: "100%" }} format="HH:mm" />
+                    </Form.Item>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Form.Item label="End Date" name="endDate" rules={[{ required: true, message: "Required" }]} style={{ flex: 1 }}>
+                      <DatePicker style={{ width: "100%" }} />
+                    </Form.Item>
+                    <Form.Item label="End Time" name="endTime" rules={[{ required: true, message: "Required" }]} style={{ flex: 1 }}>
+                      <TimePicker style={{ width: "100%" }} format="HH:mm" />
+                    </Form.Item>
+                  </div>
+
+                  <Form.Item label="Description" name="description" rules={[{ required: true, message: "Description is required" }]}>
+                    <Input.TextArea placeholder="Brief description" rows={3} style={{ resize: "none" }} />
+                  </Form.Item>
+
+                  <Form.Item label="Category" name="category" rules={[{ required: true, message: "Category is required" }]}>
+                    <Select placeholder="Select a category">
+                      {ALL_CATEGORIES.map((cat) => (
+                        <Select.Option key={cat} value={cat}>
+                          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: CATEGORY_COLORS[cat], display: "inline-block", flexShrink: 0 }} />
+                            {CATEGORY_LABELS[cat]}
+                          </span>
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item label="Privacy" name="privacy" initialValue="private">
+                    <Segmented
+                      style={{ caretColor: "transparent", width: "100%" }}
+                      options={[
+                        { label: <span><LockOutlined /> Private</span>, value: "private" },
+                        { label: <span><GlobalOutlined /> Public</span>, value: "public" },
+                      ]}
+                      block
+                    />
+                  </Form.Item>
+
+                  <Form.Item style={{ marginBottom: 0 }}>
+                    <button
+                      type="submit"
+                      style={{ width: "100%", height: 48, borderRadius: 999, border: "none", background: "linear-gradient(135deg, #833ab4, #6a2d93)", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 14px rgba(131,58,180,0.35)" }}
+                    >
+                      Create Event
+                    </button>
+                  </Form.Item>
+                </Form>
+              </ConfigProvider>
+            </div>
           </div>
         )}
       </div>
 
       {/* Event detail modal */}
-      <Modal
-        open={selectedEvent !== null}
-        onCancel={() => setSelectedEvent(null)}
-        footer={null}
-        title={<span style={{ color: "#111827" }}>{selectedEvent?.title}</span>}
-        styles={{ header: { color: "#111827" } }}
-        width={480}
-      >
-        {selectedEvent && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      {selectedEvent && (() => {
+          const catColor = selectedEvent.category ? CATEGORY_COLORS[selectedEvent.category] : "#75bd9d";
+          const catIcon = selectedEvent.category ? CATEGORY_ICONS[selectedEvent.category] : CATEGORY_ICONS.OTHER;
+          const fmt = (d: string) => {
 
+            const dt = new Date(d);
+            return `${dt.getDate()}.${dt.getMonth() + 1}.${dt.getFullYear()} · ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
+          };
+          const card = { backgroundColor: "#23262d", borderRadius: 16, padding: "14px 16px", boxShadow: "0 1px 6px rgba(0,0,0,0.25)" };
+          const label = { color: "#6b7280", fontSize: 10, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1 };
+          const value = { margin: "5px 0 0 0", color: "#f3f4f6", fontWeight: 600, fontSize: 15 };
+          return (
+            /* Backdrop */
+            <div
+              style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.45)", backdropFilter: "blur(2px)" }}
+              onClick={() => setSelectedEvent(null)}
+            >
+            {/* Card */}
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ width: 400, maxHeight: "88vh", overflowY: "auto", borderRadius: 24, boxShadow: "0 12px 48px rgba(0,0,0,0.5)", background: `linear-gradient(180deg, ${catColor} 0%, ${catColor}99 18%, ${catColor}33 40%, #16181D 62%)` }}
+            >
+            <div style={{ padding: "20px 18px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
 
-            {selectedEvent.category && (
-              <div>
-                <span style={{
-                  display: "inline-block",
-                  padding: "2px 10px",
-                  borderRadius: "999px",
-                  backgroundColor: CATEGORY_COLORS[selectedEvent.category],
-                  color: "#fff",
-                  fontSize: "12px",
-                  fontWeight: 600,
-                }}>
-                  {CATEGORY_LABELS[selectedEvent.category]}
-                </span>
-              </div>
-            )}
-            <div>
-              <span style={{ color: "#6b7280", fontSize: "12px" }}>Description</span>
-              {editingField === "description" ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "4px" }}>
-                  <Input.TextArea
-                    autoFocus
-                    rows={3}
-                    value={editValue}
-                    onChange={(e) => setEditValue(e.target.value)}
-                  />
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <Button
-                      type="primary"
-                      loading={savingEdit}
-                      onClick={() => handleUpdateField("description", editValue)}
-                    >
-                      Save
-                    </Button>
-                    <Button onClick={() => setEditingField(null)}>
-                      Cancel
-                    </Button>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  {/* Avatar */}
+                  <div style={{ width: 52, height: 52, borderRadius: "50%", background: `linear-gradient(135deg, ${catColor}55, ${catColor})`, border: `2px solid ${catColor}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <svg viewBox="0 0 24 24" width="22" height="22" dangerouslySetInnerHTML={{ __html: catIcon }} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 700, lineHeight: 1.2 }}>{selectedEvent.title}</h2>
+                    {selectedEvent.category && <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>{CATEGORY_LABELS[selectedEvent.category]}</span>}
                   </div>
                 </div>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <p style={{ margin: 0, color: "#111827" }}>
-                    {selectedEvent.description ?? "—"}
-                  </p>
+                <button onClick={() => setSelectedEvent(null)} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "rgba(255,255,255,0.8)", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>×</button>
+              </div>
 
-                  {isCreator && (
-                    <Button
-                      size="small"
-                      type="text"
-                      onClick={() => {
-                        setEditingField("description");
-                        setEditValue(selectedEvent.description ?? "");
-                      }}
-                    >
-                      ✏️
-                    </Button>
-                  )}
+              {/* Description */}
+              <div style={card}>
+                <span style={label}>Description</span>
+                {editingField === "description" ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                    <Input.TextArea autoFocus rows={3} value={editValue} onChange={(e) => setEditValue(e.target.value)} />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <Button type="primary" loading={savingEdit} onClick={() => handleUpdateField("description", editValue)}>Save</Button>
+                      <Button onClick={() => setEditingField(null)}>Cancel</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                    <p style={{ ...value, fontWeight: 400, fontSize: 14, lineHeight: 1.6, color: "#d1d5db" }}>{selectedEvent.description ?? "No description."}</p>
+                    {isCreator && (
+                      <button onClick={() => { setEditingField("description"); setEditValue(selectedEvent.description ?? ""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#bbb", fontSize: 14, flexShrink: 0 }}>✏️</button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Organizer + Participants */}
+              <div style={{ display: "flex", gap: 10 }}>
+                <div style={{ ...card, flex: 1 }}>
+                  <span style={label}>Organizer</span>
+                  <p style={value}>{selectedEvent.creatorUsername ?? "—"}</p>
+                </div>
+                <div style={{ ...card, flex: 1 }}>
+                  <span style={label}>Participants</span>
+                  <p style={value}>{selectedEvent.participantCount ?? 0}</p>
+                </div>
+              </div>
+
+              {/* Dates — single card */}
+              <div style={card}>
+                <span style={label}>Start</span>
+                <p style={{ ...value, marginBottom: 12 }}>{fmt(selectedEvent.startTime)}</p>
+                <div style={{ height: 1, backgroundColor: "#2e3138", margin: "0 0 12px" }} />
+                <span style={label}>End</span>
+                <p style={{ ...value, marginBottom: 0 }}>{fmt(selectedEvent.endTime)}</p>
+              </div>
+
+              {/* Invite code */}
+              {isCreator && selectedEvent.inviteCode && (
+                <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <span style={label}>Invite Code</span>
+                    <p style={{ ...value, fontFamily: "monospace", letterSpacing: 2 }}>{selectedEvent.inviteCode}</p>
+                  </div>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(selectedEvent.inviteCode ?? "")}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: catColor, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}
+                  >Copy</button>
                 </div>
               )}
-            </div>
-            <div style={{ display: "flex", gap: "24px" }}>
-              <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>Organizer</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.creatorUsername ?? "—"}</p>
-              </div>
-              <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>Participants</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.participantCount ?? 0}</p>
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "24px" }}>
-              <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>Start</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.startTime).toLocaleString()}</p>
-              </div>
-              <div>
-                <span style={{ color: "#6b7280", fontSize: "12px" }}>End</span>
-                <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{new Date(selectedEvent.endTime).toLocaleString()}</p>
-              </div>
-            </div>
-            
-            <div>
-              {isCreator && (
-                <div>
-                  <span style={{ color: "#6b7280", fontSize: "12px" }}>Your Invite Code - visible to event creators only</span>
-                  <p style={{ margin: "2px 0 0 0", color: "#111827" }}>{selectedEvent.inviteCode ?? "—"}</p>
-                </div>
-              )}
-            </div>
-            <div>
+
+              {/* Photos */}
               {selectedEvent.pictureUrls && selectedEvent.pictureUrls.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "6px" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {selectedEvent.pictureUrls.map((url, i) => (
-                    <img
-                      key={i}
-                      src={url}
-                      alt={`Event photo ${i + 1}`}
-                      style={{ width: "120px", height: "80px", objectFit: "cover", borderRadius: "6px" }}
-                    />
+                    <img key={i} src={url} alt={`Event photo ${i + 1}`} style={{ width: 100, height: 70, objectFit: "cover", borderRadius: 10 }} />
                   ))}
                 </div>
               )}
-              {/* Join button — not creator and not yet a participant */}
-            {!isCreator && !selectedEvent.isParticipant && (
-              <Button type="primary" onClick={handleJoinEvent} loading={joiningEvent} block>
-                Join Event
-              </Button>
-            )}
 
-            {/* Chat + Leave buttons — participant or creator */}
-            {(selectedEvent.isParticipant || isCreator) && (
-              <div style={{ display: "flex", gap: "8px" }}>
-                <Button type="primary" onClick={() => handleOpenChat(selectedEvent)} block>
-                  Join Chat
-                </Button>
-                {!isCreator && (
-                  <Button onClick={() => handleLeaveEvent(selectedEvent)} danger block>
-                    Leave Event
-                  </Button>
+              {/* Buttons */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                {!isCreator && !selectedEvent.isParticipant && (
+                  <button onClick={handleJoinEvent} disabled={joiningEvent}
+                    style={{ width: "100%", height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                    {joiningEvent ? "Joining…" : "Join Event"}
+                  </button>
+                )}
+                {(selectedEvent.isParticipant || isCreator) && (
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => handleOpenChat(selectedEvent)}
+                      style={{ flex: 1, height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                      Join Chat
+                    </button>
+                    {!isCreator && (
+                      <button onClick={() => handleLeaveEvent(selectedEvent)}
+                        style={{ flex: 1, height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f87171", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
+                        Leave
+                      </button>
+                    )}
+                  </div>
+                )}
+                <button onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}
+                  style={{ width: "100%", height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f3f4f6", fontWeight: 500, fontSize: 14, cursor: "pointer" }}>
+                  View Board
+                </button>
+                {isCreator && (
+                  <button onClick={() => handleDeleteEvent(selectedEvent)}
+                    style={{ width: "100%", height: 44, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#f87171", fontWeight: 500, fontSize: 14, cursor: "pointer" }}>
+                    Delete Event
+                  </button>
                 )}
               </div>
-            )}
             </div>
-            <Button
-              block
-              onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}
-            >
-              View Board
-            </Button>
-            {isCreator && (
-              <Button onClick={() => handleDeleteEvent(selectedEvent)} danger block>
-              Delete Event
-              </Button>
-            )}
-          </div>
-        )}
-      </Modal>
+            </div>
+            </div>
+          );
+        })()}
 
       {/* Bottom navigation */}
       <div style={{
-        height: 64,
-        paddingBottom: 12,
+        position: "relative",
+        height: 72,
         backgroundColor: "#16181D",
         borderTop: "1px solid #2a2d35",
         display: "flex",
         alignItems: "center",
         flexShrink: 0,
+        paddingBottom: 8,
       }}>
+        {/* Drop a pin — absolutely centered in the nav */}
+        <button
+          onClick={panelOpen ? closePanel : openPanel}
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            transform: "translate(-50%, -50%)",
+            background: panelOpen ? "#23262d" : "linear-gradient(135deg, #833ab4, #6a2d93)",
+            border: panelOpen ? "1.5px solid #3a3f4a" : "none",
+            borderRadius: 999,
+            height: 52,
+            padding: "0 24px",
+            color: "#fff",
+            fontWeight: 700,
+            fontSize: 14,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            boxShadow: panelOpen ? "none" : "0 4px 24px rgba(131,58,180,0.5)",
+            whiteSpace: "nowrap",
+            transition: "background 0.2s, box-shadow 0.2s",
+            zIndex: 1,
+          }}
+        >
+          {panelOpen ? (
+            <>
+              <PlusOutlined style={{ fontSize: 13, transform: "rotate(45deg)" }} />
+              Cancel
+            </>
+          ) : (
+            <>
+              <svg width="18" height="23" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="fab-pin-grad" x1="10%" y1="0%" x2="90%" y2="100%">
+                    <stop offset="0%" stopColor="#833ab4"/>
+                    <stop offset="50%" stopColor="#fd1d1d"/>
+                    <stop offset="100%" stopColor="#fcb045"/>
+                  </linearGradient>
+                </defs>
+                <path d="M14 1 C7 1 1 6.5 1 13 C1 20.5 14 35 14 35 C14 35 27 20.5 27 13 C27 6.5 21 1 14 1 Z" fill="url(#fab-pin-grad)"/>
+                <circle cx="14" cy="12.5" r="5.5" fill="rgba(0,0,0,0.35)"/>
+                <path d="M15.5 7 L11 13.5 L14 13.5 L12.5 18.5 L17 12 L14 12 Z" fill="white"/>
+              </svg>
+              Drop a pin
+            </>
+          )}
+        </button>
+        {/* Explore */}
         <button
           onClick={() => {}}
-          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "#75bd9d", fontSize: 11, fontWeight: 500 }}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 }}
         >
-          <CompassOutlined style={{ fontSize: 22 }} />
-          <span>Explore</span>
+          <CompassOutlined style={{ fontSize: 22, color: "#fff" }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>Explore</span>
+          <div style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "#833ab4", marginTop: -2 }} />
         </button>
 
-        <button
-          onClick={openPanel}
-          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
-        >
-          <div style={{ width: 48, height: 48, borderRadius: "50%", backgroundColor: "#75bd9d", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(117,189,157,0.4)", marginBottom: -8 }}>
-            <PlusOutlined style={{ fontSize: 22, color: "#fff" }} />
-          </div>
-        </button>
+        {/* spacer — keeps Explore left and Profile right */}
+        <div style={{ flex: 1 }} />
 
+        {/* Profile */}
         <button
           onClick={() => router.push(`/users/${userId}`)}
-          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, color: "#888", fontSize: 11, fontWeight: 500 }}
+          style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 }}
         >
-          <UserOutlined style={{ fontSize: 22 }} />
-          <span>Profile</span>
+          <UserOutlined style={{ fontSize: 22, color: "#6b7280" }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#6b7280" }}>Profile</span>
+          <div style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "transparent", marginTop: -2 }} />
         </button>
       </div>
     </main>
