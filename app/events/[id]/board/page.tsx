@@ -115,7 +115,7 @@ export default function BoardPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: `linear-gradient(180deg, ${accentColor} 0%, ${accentColor}66 8%, ${accentColor}22 18%, #0a0a0a 32%)`, backgroundColor: "#0a0a0a" }}>
+    <div style={{ minHeight: "100vh", backgroundImage: `linear-gradient(180deg, ${accentColor} 0%, ${accentColor}66 8%, ${accentColor}22 18%, #0a0a0a 32%)`, backgroundColor: "#0a0a0a" }}>
 
       {/* Header */}
       <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 12 }}>

@@ -179,7 +179,7 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: `linear-gradient(180deg, #833ab4 0%, #fd1d1d22 10%, #0a0a0a 28%)`, backgroundColor: "#0a0a0a", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", backgroundImage: `linear-gradient(180deg, #833ab4 0%, #fd1d1d22 10%, #0a0a0a 28%)`, backgroundColor: "#0a0a0a", display: "flex", flexDirection: "column" }}>
 
       {/* Scrollable content */}
       <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", padding: "0 16px 24px" }}>

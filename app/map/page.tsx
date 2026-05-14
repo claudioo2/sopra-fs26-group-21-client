@@ -1070,7 +1070,7 @@ export default function MapPage() {
           const chatEvent = chatEventRef.current!;
           const catColor = chatEvent.category ? CATEGORY_COLORS[chatEvent.category] : "#75bd9d";
           return (
-            <div style={{ width: "360px", height: "100%", display: "flex", flexDirection: "column", flexShrink: 0, background: `linear-gradient(180deg, ${catColor} 0%, ${catColor}99 10%, ${catColor}22 25%, #0a0a0a 45%)`, backgroundColor: "#0a0a0a", boxShadow: "2px 0 12px rgba(0,0,0,0.5)" }}>
+            <div style={{ width: "360px", height: "100%", display: "flex", flexDirection: "column", flexShrink: 0, backgroundImage: `linear-gradient(180deg, ${catColor} 0%, ${catColor}99 10%, ${catColor}22 25%, #0a0a0a 45%)`, backgroundColor: "#0a0a0a", boxShadow: "2px 0 12px rgba(0,0,0,0.5)" }}>
 
               {/* Header */}
               <div style={{ padding: "16px 16px 14px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -1315,7 +1315,7 @@ export default function MapPage() {
 
         {/* Create event panel — right side */}
         {panelOpen && (
-          <div style={{ width: "320px", height: "100%", display: "flex", flexDirection: "column", flexShrink: 0, background: `linear-gradient(180deg, #833ab4 0%, #833ab499 8%, #833ab422 18%, #0a0a0a 32%)`, backgroundColor: "#0a0a0a", boxShadow: "-2px 0 12px rgba(0,0,0,0.5)" }}>
+          <div style={{ width: "320px", height: "100%", display: "flex", flexDirection: "column", flexShrink: 0, backgroundImage: `linear-gradient(180deg, #833ab4 0%, #833ab499 8%, #833ab422 18%, #0a0a0a 32%)`, backgroundColor: "#0a0a0a", boxShadow: "-2px 0 12px rgba(0,0,0,0.5)" }}>
 
             {/* Header */}
             <div style={{ padding: "16px 16px 14px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
