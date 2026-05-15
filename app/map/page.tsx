@@ -242,6 +242,13 @@ export default function MapPage() {
 
   const eventsByIdRef = useRef<Map<number, EventDTO>>(new Map());
   const pulseAnimationRef = useRef<number | null>(null);
+  const ENABLE_CHAT_NOTIFICATIONS = false;
+
+  const clearSpider = useCallback(() => {
+    spiderMarkersRef.current.forEach((m) => m.remove());
+    spiderMarkersRef.current = [];
+    spiderClusterIdRef.current = null;
+  }, []);
 
   const renderEventMarkers = async (map: mapboxgl.Map, events: EventDTO[]) => {
     eventsByIdRef.current = new Map(events.map((event) => [event.id, event]));
@@ -594,6 +601,7 @@ export default function MapPage() {
 
   // #49 — Subscribe in background to all user events and show a notification on new messages
   useEffect(() => {
+    if (!ENABLE_CHAT_NOTIFICATIONS) return;
     if (!userId || !token || !isMounted) return;
 
     const sockJsUrl = getApiDomain().replace(/\/$/, "") + "/ws";
@@ -607,6 +615,8 @@ export default function MapPage() {
 
         const client = new Client({
           webSocketFactory: () => new SockJS(sockJsUrl),
+          reconnectDelay: 0,
+          connectionTimeout: 5000,
           onConnect: () => {
             events.forEach((event) => {
               client.subscribe(`/topic/chat/${event.id}`, (frame) => {
