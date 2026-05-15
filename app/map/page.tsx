@@ -1957,7 +1957,7 @@ export default function MapPage() {
               {/* Rate organizer */}
               {!isCreator && selectedEvent.isParticipant && (
                 <div style={card}>
-                  <span style={label}>Rate Organizer</span>
+                  <span style={label}>Event Rating</span>
 
                   {new Date(selectedEvent.endTime) < new Date() ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
@@ -1982,7 +1982,7 @@ export default function MapPage() {
                     </div>
                   ) : (
                     <p style={{ ...value, color: "#9ca3af", fontSize: 13 }}>
-                      Available after event ends
+                      Available after the event is over.
                     </p>
                   )}
                 </div>
