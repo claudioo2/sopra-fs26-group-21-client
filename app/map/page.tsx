@@ -85,7 +85,19 @@ const SPIDER_LEAF_RADIUS_PER_LEAF = 3; // grow the circle a bit when many leaves
 type EventFeatureProps = { event: EventDTO };
 
 function getParticipantIds(event: EventDTO): number[] {
-  return event.participants?.map((u) => Number(u.id)) ?? [];
+  const eventWithOldIds = event as EventDTO & {
+    participantIds?: number[];
+  };
+
+  if (event.participants?.length) {
+    return event.participants.map((u) => Number(u.id));
+  }
+
+  if (eventWithOldIds.participantIds?.length) {
+    return eventWithOldIds.participantIds.map((id) => Number(id));
+  }
+
+  return [];
 }
 
 function buildPinSvg(category: EventCategory | null | undefined): string {
@@ -1873,6 +1885,7 @@ export default function MapPage() {
               </div>
 
               {/* Participants list with follow/unfollow */}
+              
               {participantUsers.length > 0 && (
                 <div style={card}>
                   <span style={label}>Participants ({participantUsers.length})</span>
@@ -1911,95 +1924,8 @@ export default function MapPage() {
                 <span style={label}>End</span>
                 <p style={{ ...value, marginBottom: 0 }}>{fmt(selectedEvent.endTime)}</p>
               </div>
-              
-              {/* Participants */}
-              <div style={card}>
-                <span style={label}>
-                  Participants ({selectedEvent.participantCount ?? selectedEvent.participants?.length ?? 0})
-                </span>
 
-                {(selectedEvent.participantCount ?? selectedEvent.participants?.length ?? 0) > 0 ? (
-                  <div
-                    style={{
-                      marginTop: 10,
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 6,
-                      maxHeight: 190,
-                      overflowY: "auto",
-                      paddingRight: 8,
-                    }}
-                  >
-                    {selectedEvent.participants?.map((participant) => (
-                      <div
-                        key={participant.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          padding: "8px 10px",
-                          borderRadius: 10,
-                          backgroundColor: "#f3f4f6",
-                        }}
-                      >
-                        {/* Username */}
-                        <span
-                          onClick={() => router.push(`/users/${participant.id}`)}
-                          style={{
-                            cursor: "pointer",
-                            fontWeight: 600,
-                            color: "#111827",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.opacity = "0.7";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.opacity = "1";
-                          }}
-                        >
-                          {Number(participant.id) === Number(userId)
-                            ? `${participant.username} (You)`
-                            : Number(participant.id) === Number(selectedEvent.creatorId)
-                            ? `${participant.username} (Creator)`
-                            : participant.username}
-                        </span>
 
-                        {/* Buttons */}
-                        {Number(participant.id) !== Number(userId) && (
-                          <div style={{ display: "flex", gap: 8 }}>
-                            {followedUsers.some((u) => Number(u.id) === Number(participant.id)) ? (
-                              <Button
-                                onClick={() => handleUnFollowUser(Number(participant.id))}
-                                size="small"
-                              >
-                                Unfollow
-                              </Button>
-                            ) : (
-                              <Button
-                                onClick={() => handleFollowUser(Number(participant.id))}
-                                size="small"
-                                type="primary"
-                              >
-                                Follow
-                              </Button>
-                            )}
-
-                            <Button
-                              onClick={() => router.push(`/users/${participant.id}`)}
-                              size="small"
-                            >
-                              Visit
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p style={{ ...value, color: "#9ca3af" }}>No participants yet</p>
-                )}
-              </div>
 
               {/* Invite code */}
               {isCreator && selectedEvent.inviteCode && (
