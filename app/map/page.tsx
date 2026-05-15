@@ -75,7 +75,7 @@ interface Message {
   eventId: number;
 }
 
-const DEFAULT_CENTER: [number, number] = [13.405, 52.52]; // Berlin fallback
+const DEFAULT_CENTER: [number, number] = [8.5404, 47.378]; // Berlin fallback
 
 const CLUSTER_RADIUS = 50;       // px — supercluster grouping radius
 const CLUSTER_MAX_ZOOM = 16;     // beyond this zoom we stop clustering
@@ -240,150 +240,263 @@ export default function MapPage() {
   const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");
   const [isMounted, setIsMounted] = useState(false);
 
-  const clearSpider = useCallback(() => {
-    spiderMarkersRef.current.forEach((m) => m.remove());
-    spiderMarkersRef.current = [];
-    spiderClusterIdRef.current = null;
-  }, []);
+  const eventsByIdRef = useRef<Map<number, EventDTO>>(new Map());
+  const pulseAnimationRef = useRef<number | null>(null);
 
-  const clearAllMarkers = useCallback(() => {
-    clearSpider();
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-  }, [clearSpider]);
+  const renderEventMarkers = async (map: mapboxgl.Map, events: EventDTO[]) => {
+    eventsByIdRef.current = new Map(events.map((event) => [event.id, event]));
 
-  const spiderfy = useCallback(
-    (clusterId: number, lngLat: [number, number], leaves: EventDTO[]) => {
-      const map = mapInstanceRef.current;
-      if (!map) return;
-      clearSpider();
-      spiderClusterIdRef.current = clusterId;
+    await loadCategoryPinIcons(map);
 
-      const n = leaves.length;
-      const radius = SPIDER_LEAF_RADIUS + Math.max(0, n - 8) * SPIDER_LEAF_RADIUS_PER_LEAF;
+    const geojson: GeoJSON.FeatureCollection<GeoJSON.Point> = {
+      type: "FeatureCollection",
+      features: events.map((event) => {
+        const now = new Date();
 
-      leaves.forEach((event, i) => {
-        const angle = (2 * Math.PI * i) / n - Math.PI / 2;
-        const dx = Math.cos(angle) * radius;
-        const dy = Math.sin(angle) * radius;
+        const isOngoing =
+          new Date(event.startTime) <= now && now <= new Date(event.endTime);
+        
+        return {
+            type: "Feature",
+            geometry: {
+              type: "Point", 
+              coordinates: [Number(event.longitude), Number(event.latitude)],
+            },
+          properties: {
+            eventId: event.id,
+            icon: `pin-${event.category ?? "OTHER"}`,
+            color: event.category ? CATEGORY_COLORS[event.category] : "#94a3b8",
+            isOngoing,
+          },
+        };
+      }),
+    }
 
-        const wrapper = document.createElement("div");
-        wrapper.style.cssText = "position:relative; width:0; height:0;";
+    const existingSource = map.getSource("events-source") as
+      | mapboxgl.GeoJSONSource
+      | undefined;
 
-        const line = document.createElement("div");
-        line.className = "spider-line";
-        line.style.transform = `rotate(${angle}rad)`;
-        line.style.width = "0px";
-        wrapper.appendChild(line);
+    if (existingSource) {
+      existingSource.setData(geojson);
+      return;
+    }
 
-        const leaf = document.createElement("div");
-        leaf.className = "spider-leaf";
-        leaf.style.transform = "translate(0px, 0px)";
-        leaf.innerHTML = buildPinSvg(event.category);
-        leaf.title = event.title;
-        leaf.addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          setSelectedEvent(event);
-        });
-        wrapper.appendChild(leaf);
+    map.addSource("events-source", {
+      type: "geojson",
+      data: geojson,
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 50,
+    });
 
-        const marker = new mapboxgl.Marker({ element: wrapper, anchor: "center" })
-          .setLngLat(lngLat)
-          .addTo(map);
-        spiderMarkersRef.current.push(marker);
+    map.addLayer({
+      id: "event-clusters",
+      type: "circle",
+      source: "events-source",
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-radius": [
+          "step",
+          ["get", "point_count"],
+          22,
+          10,
+          28,
+          30,
+          36,
+        ],
+        "circle-opacity": 0.85,
+      },
+    });
 
-        // Animate outward on next frame so the transition fires
-        requestAnimationFrame(() => {
-          leaf.style.transform = `translate(${dx}px, ${dy}px)`;
-          line.style.width = `${radius}px`;
-        });
-      });
-    },
-    [clearSpider],
-  );
+    map.addLayer({
+      id: "event-cluster-count",
+      type: "symbol",
+      source: "events-source",
+      filter: ["has", "point_count"],
+      layout: {
+        "text-field": ["get", "point_count_abbreviated"],
+        "text-size": 14,
+      },
+    });
 
-  const renderClusters = useCallback(
-    (events: EventDTO[]) => {
-      const map = mapInstanceRef.current;
-      if (!map) return;
-      clearAllMarkers();
+    map.addLayer({
+      id: "events-pulse",
+      type: "circle",
+      source: "events-source",
+      filter: ["!", ["has", "point_count"]],
+      /*filter: ["==", ["get", "isOngoing"], true], */
+      paint: {
+        "circle-radius": 24,
+        "circle-color": ["get", "color"],
+        "circle-opacity": 0.35,
+        "circle-translate": [0, -36],
+      },
+    });
 
-      const features: Supercluster.PointFeature<EventFeatureProps>[] = events.map((event) => ({
-        type: "Feature",
-        properties: { event },
-        geometry: { type: "Point", coordinates: [event.longitude, event.latitude] },
-      }));
+    map.addLayer({
+      id: "events-hitbox",
+      type: "circle",
+      source: "events-source",
+      filter: ["!", ["has", "point_count"]],
+      paint: {
+        "circle-radius": 30,
+        "circle-color": "#000000",
+        "circle-opacity": 0,
+        "circle-translate": [0, -36],
+      },
+    });
 
-      const index = new Supercluster<EventFeatureProps>({
-        radius: CLUSTER_RADIUS,
-        maxZoom: CLUSTER_MAX_ZOOM,
-      });
-      index.load(features);
-      superclusterRef.current = index;
+    map.addLayer({
+      id: "events-pins",
+      type: "symbol",
+      source: "events-source",
+      filter: ["!", ["has", "point_count"]],
+      layout: {
+        "icon-image": ["get", "icon"],
+        "icon-size": 1.8,
+        "icon-anchor": "bottom",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    });
 
-      const bounds = map.getBounds();
-      if (!bounds) return;
-      const bbox: [number, number, number, number] = [
-        bounds.getWest(),
-        bounds.getSouth(),
-        bounds.getEast(),
-        bounds.getNorth(),
-      ];
-      const zoom = Math.floor(map.getZoom());
-      const clusters = index.getClusters(bbox, zoom);
 
-      if (!map.getContainer()?.isConnected) return;
+    if (pulseAnimationRef.current !== null) {
+      cancelAnimationFrame(pulseAnimationRef.current);
+      pulseAnimationRef.current = null;
+    }
 
-      clusters.forEach((feat) => {
-        if (!map.getContainer()?.isConnected) return;
 
-        const [lng, lat] = feat.geometry.coordinates as [number, number];
-        const props = feat.properties as Supercluster.AnyProps;
-
-        if (props.cluster) {
-          const clusterId = props.cluster_id as number;
-          const total = props.point_count as number;
-          const leaves = index.getLeaves(clusterId, Infinity) as Supercluster.PointFeature<EventFeatureProps>[];
-          const counts: Partial<Record<EventCategory, number>> = {};
-          for (const leaf of leaves) {
-            const cat = leaf.properties.event.category ?? "OTHER";
-            counts[cat] = (counts[cat] ?? 0) + 1;
-          }
-          const element = buildClusterElement(counts, total);
-          element.addEventListener("click", (ev) => {
-            ev.stopPropagation();
-            // If this same cluster is already spiderfied, collapse it.
-            if (spiderClusterIdRef.current === clusterId) {
-              clearSpider();
-              return;
-            }
-            const expansionZoom = index.getClusterExpansionZoom(clusterId);
-            if (expansionZoom <= CLUSTER_MAX_ZOOM) {
-              clearSpider();
-              map.easeTo({ center: [lng, lat], zoom: expansionZoom, duration: 500 });
-            } else {
-              spiderfy(
-                clusterId,
-                [lng, lat],
-                leaves.map((l) => l.properties.event),
-              );
-            }
-          });
-          const marker = new mapboxgl.Marker({ element, anchor: "center" })
-            .setLngLat([lng, lat])
-            .addTo(map);
-          markersRef.current.push(marker);
-        } else {
-          const event = (props as EventFeatureProps).event;
-          const wrapper = buildPinElement(event);
-          wrapper.addEventListener("click", () => setSelectedEvent(event));
-          const marker = new mapboxgl.Marker(wrapper).setLngLat([lng, lat]).addTo(map);
-          markersRef.current.push(marker);
+    if (pulseAnimationRef.current === null) {
+      const animatePulse = () => {
+        if (!map.getLayer("events-pulse")) {
+          pulseAnimationRef.current = null;
+          return;
         }
+
+        const time = Date.now() / 1000;
+        const progress = (Math.sin(time * 3) + 1) / 2;
+
+        const radius = 18 + progress * 18;
+        const opacity = 0.45 - progress * 0.35;
+
+        map.setPaintProperty("events-pulse", "circle-radius", radius);
+        map.setPaintProperty("events-pulse", "circle-opacity", opacity);
+
+        pulseAnimationRef.current = requestAnimationFrame(animatePulse);
+      };
+
+      pulseAnimationRef.current = requestAnimationFrame(animatePulse);
+    }
+
+    map.on("click", "events-hitbox", (e) => {
+      const feature = e.features?.[0];
+      const eventId = feature?.properties?.eventId;
+
+      if (eventId == null) return;
+
+      const event = eventsByIdRef.current.get(Number(eventId));
+
+      if (event) {
+        setSelectedEvent(event);
+      }
+    });
+
+    map.on("click", "event-clusters", (e) => {
+      const features = map.queryRenderedFeatures(e.point, {
+        layers: ["event-clusters"],
       });
-    },
-    [clearAllMarkers, clearSpider, spiderfy],
-  );
+
+      const clusterId = features[0]?.properties?.cluster_id;
+
+      if (clusterId == null) return;
+
+      const source = map.getSource("events-source") as mapboxgl.GeoJSONSource;
+
+      source.getClusterExpansionZoom(Number(clusterId), (err, zoom) => {
+        if (err || zoom == null) return;
+
+        const coordinates = (features[0].geometry as GeoJSON.Point).coordinates as [
+          number,
+          number,
+        ];
+
+        map.easeTo({
+          center: coordinates,
+          zoom,
+          duration: 500,
+        });
+      });
+    });
+
+    map.on("mouseenter", "events-hitbox", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "events-hitbox", () => {
+      map.getCanvas().style.cursor = "";
+    });
+
+    map.on("mouseenter", "event-clusters", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "event-clusters", () => {
+      map.getCanvas().style.cursor = "";
+    });
+  };
+
+
+
+  const loadCategoryPinIcons = async (map: mapboxgl.Map) => {
+    const categories = Object.keys(CATEGORY_ICONS) as Array<keyof typeof CATEGORY_ICONS>;
+
+    for (const category of categories) {
+      const imageId = `pin-${category}`;
+
+      if (map.hasImage(imageId)) continue;
+
+      const color =
+        category in CATEGORY_COLORS
+          ? CATEGORY_COLORS[category as EventCategory]
+          : "#94a3b8";
+
+      const icon = CATEGORY_ICONS[category];
+
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="62" viewBox="0 0 48 62">
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.35)"/>
+          </filter>
+
+          <g filter="url(#shadow)">
+            <circle cx="24" cy="24" r="22" fill="${color}"/>
+            <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+            <polygon points="24,62 15,40 33,40" fill="${color}"/>
+          </g>
+
+          <g transform="translate(12, 12)" fill="white" stroke="white">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+              ${icon}
+            </svg>
+          </g>
+        </svg>
+      `;
+
+      const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
+
+      if (!map.hasImage(imageId)) {
+        map.addImage(imageId, image, { pixelRatio: 2 });
+      }
+    }
+  };
 
   // Resize the map after any panel opens or closes.
   // useEffect fires after React commits the DOM change, so the map div already
@@ -571,7 +684,9 @@ export default function MapPage() {
 
     mapboxgl.accessToken = accessToken;
 
-    const fetchAndDisplayEvents = async (center: [number, number], categories: Set<EventCategory>) => {
+    
+
+    const fetchAndDisplayEvents = async (map: mapboxgl.Map, center: [number, number], categories: Set<EventCategory>) => {
       try {
         const [lng, lat] = center;
         let url = `/events?longitude=${lng}&latitude=${lat}&radius=20`;
@@ -579,10 +694,14 @@ export default function MapPage() {
           categories.forEach((cat) => { url += `&categories=${cat}`; });
         }
         const events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
-        const visible = events.filter(
-          (event) => !event.isPrivate || event.participantIds?.includes(Number(userId)),
+
+        const visibleEvents = events.filter(
+          (event) =>
+            !event.isPrivate || event.participantIds?.includes(Number(userId))
         );
-        renderClusters(visible);
+
+        await renderEventMarkers(map, visibleEvents);
+
       } catch (error) {
         console.error("Failed to fetch events:", error);
       }
@@ -602,42 +721,59 @@ export default function MapPage() {
 
       map.addControl(
         new mapboxgl.GeolocateControl({
-          positionOptions: { enableHighAccuracy: true },
+          positionOptions: { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000},
           trackUserLocation: true,
           showUserHeading: true,
+      
         })
       );
 
       map.on("load", () => {
         mapCenterRef.current = center;
-        fetchAndDisplayEvents(center, activeCategories);
+        fetchAndDisplayEvents(map, center, activeCategories);
       });
 
       map.on("moveend", () => {
         const c = map.getCenter();
         mapCenterRef.current = [c.lng, c.lat];
         setSelectedLocation([c.lng, c.lat]);
-        fetchAndDisplayEvents([c.lng, c.lat], activeCategories);
+        fetchAndDisplayEvents(map, [c.lng, c.lat], activeCategories);
       });
 
-      // Click on empty map collapses any open spider.
+      // Click on empty map collapses any open map.
       map.on("click", () => {
-        clearSpider();
         if (chatEventRef.current) handleCloseChat();
       });
     };
 
+    initMap(DEFAULT_CENTER);
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          initMap([position.coords.longitude, position.coords.latitude]);
+          const userCenter: [number, number] = [
+            position.coords.longitude,
+            position.coords.latitude,
+          ];
+
+          mapCenterRef.current = userCenter;
+
+          mapInstanceRef.current?.flyTo({
+            center: userCenter,
+            zoom: 12,
+          });
+
+          mapInstanceRef.current?.fire("moveend");
         },
         () => {
-          initMap(DEFAULT_CENTER);
+          console.warn("Could not get user location. Using default center.");
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 3000,
+          maximumAge: 60000,
         }
       );
-    } else {
-      initMap(DEFAULT_CENTER);
     }
 
     return () => {
@@ -649,43 +785,74 @@ export default function MapPage() {
   // Re-fetch markers when category filters or myEventsOnly change
   useEffect(() => {
     if (!mapInstanceRef.current || !token) return;
+
+    const map = mapInstanceRef.current;
     const center = mapCenterRef.current;
     let cancelled = false;
+
     const fetchAndRefresh = async () => {
       let url = `/events?longitude=${center[0]}&latitude=${center[1]}&radius=20`;
+
       if (activeCategories.size > 0) {
-        activeCategories.forEach((cat) => { url += `&categories=${cat}`; });
+        activeCategories.forEach((cat) => {
+          url += `&categories=${cat}`;
+        });
       }
+
       try {
-        let events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
+        let events = await apiService.get<EventDTO[]>(url, {
+          Authorization: `Bearer ${token}`,
+        });
+
         if (myEventsOnly) {
           const uid = Number(userId);
-          events = events.filter(e => e.creatorId === uid || e.participantIds?.includes(uid));
-        }
-        if (friendsOnly) {
-          events = events.filter(e =>
-            (e.participantIds ?? []).some(id => followedUsers.some(u => Number(u.id) === Number(id))),
+          events = events.filter(
+            (e) => e.creatorId === uid || e.participantIds?.includes(uid)
           );
-          if (followedUsers.length === 0) {
-            messageApi.info("You are not following anyone yet.");
-          } else if (events.length === 0) {
-            messageApi.info("None of your friends are attending any local events.");
           }
-        }
-        events = events.filter(
-          (event) => !event.isPrivate || event.participantIds?.includes(Number(userId)),
-        );
-        if (cancelled || !mapInstanceRef.current) return;
-        renderClusters(events);
+
+          if (friendsOnly) {
+            events = events.filter((e) =>
+              (e.participantIds ?? []).some((id) =>
+                followedUsers.some((user) => Number(user.id) === Number(id))
+              )
+            );
+
+            if (followedUsers.length === 0) {
+              messageApi.info("You are not following anyone yet.");
+            } else if (events.length === 0) {
+              messageApi.info("None of your friends are attending any local events.");
+            }
+          }
+
+          if (cancelled || !mapInstanceRef.current) return;
+
+          const visibleEvents = events.filter(
+            (event) =>
+              !event.isPrivate || event.participantIds?.includes(Number(userId))
+          );
+
+          await renderEventMarkers(map, visibleEvents);
       } catch (error) {
         console.error("Failed to refresh events:", error);
       }
     };
-    fetchAndRefresh();
-    return () => { cancelled = true; };
-  }, [activeCategories, myEventsOnly, friendsOnly, includePast, token, apiService, userId, followedUsers, renderClusters]);
 
-  useEffect(() => { includePastRef.current = includePast; }, [includePast]);
+    fetchAndRefresh();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeCategories,
+    myEventsOnly,
+    friendsOnly,
+    includePast,
+    token,
+    apiService,
+    userId,
+    followedUsers,
+  ]);
 
   const toggleCategory = (cat: EventCategory) => {
     setActiveCategories((prev) => {
@@ -1058,7 +1225,41 @@ export default function MapPage() {
   };
 
 
-  if (!token) return null;
+  if (!isMounted) {
+    return (
+      <main
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+          color: "#475569",
+          fontSize: "16px",
+        }}
+      >
+        Loading application...
+      </main>
+    );
+  }
+
+  if (!token) {
+    return (
+      <main
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+          color: "#475569",
+          fontSize: "16px",
+        }}
+      >
+        Redirecting to login...
+      </main>
+    );
+  }
 
   const isCreator = selectedEvent !== null && Number(userId) === selectedEvent.creatorId;
 
