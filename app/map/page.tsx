@@ -240,6 +240,8 @@ export default function MapPage() {
   const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");
   const [isMounted, setIsMounted] = useState(false);
 
+  const ENABLE_CHAT_NOTIFICATIONS = false;
+
   const clearSpider = useCallback(() => {
     spiderMarkersRef.current.forEach((m) => m.remove());
     spiderMarkersRef.current = [];
@@ -481,6 +483,7 @@ export default function MapPage() {
 
   // #49 — Subscribe in background to all user events and show a notification on new messages
   useEffect(() => {
+    if (!ENABLE_CHAT_NOTIFICATIONS) return;
     if (!userId || !token || !isMounted) return;
 
     const sockJsUrl = getApiDomain().replace(/\/$/, "") + "/ws";
@@ -494,6 +497,8 @@ export default function MapPage() {
 
         const client = new Client({
           webSocketFactory: () => new SockJS(sockJsUrl),
+          reconnectDelay: 0,
+          connectionTimeout: 5000,
           onConnect: () => {
             events.forEach((event) => {
               client.subscribe(`/topic/chat/${event.id}`, (frame) => {
