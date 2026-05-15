@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Supercluster from "supercluster";
-import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Select, Rate } from "antd";
+import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal, Select, Rate } from "antd";
 import { LockOutlined, GlobalOutlined, PlusOutlined, CompassOutlined, UserOutlined, KeyOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
@@ -75,7 +75,7 @@ interface Message {
   eventId: number;
 }
 
-const DEFAULT_CENTER: [number, number] = [8.5404, 47.378]; // Berlin fallback
+const DEFAULT_CENTER: [number, number] = [8.5404, 47.378]; // Zurich fallback
 
 const CLUSTER_RADIUS = 50;       // px — supercluster grouping radius
 const CLUSTER_MAX_ZOOM = 16;     // beyond this zoom we stop clustering
@@ -83,6 +83,10 @@ const SPIDER_LEAF_RADIUS = 64;   // px — distance from cluster centre to each 
 const SPIDER_LEAF_RADIUS_PER_LEAF = 3; // grow the circle a bit when many leaves
 
 type EventFeatureProps = { event: EventDTO };
+
+function getParticipantIds(event: EventDTO): number[] {
+  return event.participants?.map((u) => Number(u.id)) ?? [];
+}
 
 function buildPinSvg(category: EventCategory | null | undefined): string {
   const color = category ? CATEGORY_COLORS[category] : "#94a3b8";
@@ -519,6 +523,27 @@ export default function MapPage() {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
+  // Fetch my rating when an event modal opens
+  useEffect(() => {
+    console.log(typeof selectedEvent?.participants?.[0]?.id);
+    if (!selectedEvent || !token) {
+      setMyRating(null);
+      return;
+    }
+    const fetchMyRating = async () => {
+      try {
+        const r = await apiService.get<{ score: number } | null>(
+          `/events/${selectedEvent.id}/ratings/me`,
+          { Authorization: `Bearer ${token}` }
+        );
+        setMyRating(r?.score ?? null);
+      } catch {
+        setMyRating(null);
+      }
+    };
+    fetchMyRating();
+  }, [selectedEvent, token, apiService]);
+
   // Auth guard — delays check by one render to avoid SSR/localStorage issues
   useEffect(() => {
     if (!isMounted) {
@@ -540,16 +565,27 @@ export default function MapPage() {
     validate();
   }, [token, apiService, router, clearToken, isMounted]);
 
-
+  // fetch the following users
   const fetchFollowing = useCallback(async () => {
     if (!token) return;
+
     try {
-      const data = await apiService.get<User[]>("/users/following", { Authorization: `Bearer ${token}` });
+      const data = await apiService.get<User[]>(
+        "/users/following",
+        { Authorization: `Bearer ${token}` }
+      );
+
       setFollowedUsers(data);
+
     } catch (err) {
       console.error("Failed to fetch following", err);
     }
   }, [token, apiService]);
+
+  useEffect(() => {
+    fetchFollowing();
+  }, [fetchFollowing]);
+
 
   useEffect(() => { fetchFollowing(); }, [fetchFollowing]);
 
@@ -557,8 +593,13 @@ export default function MapPage() {
     if (!userId || !token) return;
     const fetchUser = async () => {
       try {
-        const data = await apiService.get<User>(`/users/${userId}`, { Authorization: `Bearer ${token}` });
+        const data = await apiService.get<User>(
+          `/users/${userId}`,
+          { Authorization: `Bearer ${token}` }
+        );
+
         setUser(data);
+
       } catch (err) {
         console.error("Failed to fetch user", err);
       }
@@ -583,21 +624,39 @@ export default function MapPage() {
 
   // Fetch participant user objects when a modal opens so we can show follow/unfollow
   useEffect(() => {
-    if (!selectedEvent?.participantIds?.length || !token) { setParticipantUsers([]); return; }
+    const participantIds = selectedEvent ? getParticipantIds(selectedEvent) : [];
+
+    if (!participantIds.length || !token) {
+      setParticipantUsers([]);
+      return;
+    }
+
     let cancelled = false;
+
     const fetchParticipants = async () => {
       try {
-        const ids = (selectedEvent.participantIds ?? []).slice(0, 30); // cap to 30
+        const ids = participantIds.slice(0, 30); // cap to 30
+
         const users = await Promise.all(
-          ids.map((id) => apiService.get<User>(`/users/${id}`, { Authorization: `Bearer ${token}` }))
+          ids.map((id) =>
+            apiService.get<User>(`/users/${id}`, {
+              Authorization: `Bearer ${token}`,
+            })
+          )
         );
+
         if (!cancelled) setParticipantUsers(users);
-      } catch { if (!cancelled) setParticipantUsers([]); }
+      } catch {
+        if (!cancelled) setParticipantUsers([]);
+      }
     };
+
     fetchParticipants();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEvent?.id, token, apiService]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEvent?.id, selectedEvent?.participants, token, apiService]);
 
   // #49 — Subscribe in background to all user events and show a notification on new messages
   useEffect(() => {
@@ -703,14 +762,13 @@ export default function MapPage() {
         if (categories.size > 0) {
           categories.forEach((cat) => { url += `&categories=${cat}`; });
         }
+        if (includePastRef.current) url += `&includePast=true`;
         const events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
-
-        const visibleEvents = events.filter(
-          (event) =>
-            !event.isPrivate || event.participantIds?.includes(Number(userId))
+        const visible = events.filter(
+          (event) => !event.isPrivate || getParticipantIds(event).includes(Number(userId)),
         );
 
-        await renderEventMarkers(map, visibleEvents);
+        await renderEventMarkers(map, visible);
 
       } catch (error) {
         console.error("Failed to fetch events:", error);
@@ -731,7 +789,7 @@ export default function MapPage() {
 
       map.addControl(
         new mapboxgl.GeolocateControl({
-          positionOptions: { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000},
+          positionOptions: { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 },
           trackUserLocation: true,
           showUserHeading: true,
       
@@ -756,6 +814,8 @@ export default function MapPage() {
       });
     };
 
+    // Render the map immediately on DEFAULT_CENTER, then flyTo the user once geolocation resolves.
+    // Avoids blocking first paint on a slow GPS lock.
     initMap(DEFAULT_CENTER);
 
     if (navigator.geolocation) {
@@ -767,7 +827,6 @@ export default function MapPage() {
           ];
 
           mapCenterRef.current = userCenter;
-
           mapInstanceRef.current?.flyTo({
             center: userCenter,
             zoom: 12,
@@ -808,7 +867,7 @@ export default function MapPage() {
           url += `&categories=${cat}`;
         });
       }
-
+      if (includePast) url += `&includePast=true`;
       try {
         let events = await apiService.get<EventDTO[]>(url, {
           Authorization: `Bearer ${token}`,
@@ -817,32 +876,31 @@ export default function MapPage() {
         if (myEventsOnly) {
           const uid = Number(userId);
           events = events.filter(
-            (e) => e.creatorId === uid || e.participantIds?.includes(uid)
+            (e) => e.creatorId === uid || getParticipantIds(e).includes(uid)
           );
-          }
+        }
 
-          if (friendsOnly) {
-            events = events.filter((e) =>
-              (e.participantIds ?? []).some((id) =>
+        if (friendsOnly) {
+          events = events.filter(
+            (e) => 
+              getParticipantIds(e).some((id) =>
                 followedUsers.some((user) => Number(user.id) === Number(id))
               )
             );
-
-            if (followedUsers.length === 0) {
-              messageApi.info("You are not following anyone yet.");
-            } else if (events.length === 0) {
-              messageApi.info("None of your friends are attending any local events.");
-            }
+          if (followedUsers.length === 0) {
+            messageApi.info("You are not following anyone yet.");
+          } else if (events.length === 0) {
+            messageApi.info("None of your friends are attending any local events.");
           }
+        }
+        events = events.filter(
+          (event) => 
+            !event.isPrivate || getParticipantIds(event).includes(Number(userId)),
+        );
+        if (cancelled || !mapInstanceRef.current) return;
 
-          if (cancelled || !mapInstanceRef.current) return;
+        await renderEventMarkers(map, events);
 
-          const visibleEvents = events.filter(
-            (event) =>
-              !event.isPrivate || event.participantIds?.includes(Number(userId))
-          );
-
-          await renderEventMarkers(map, visibleEvents);
       } catch (error) {
         console.error("Failed to refresh events:", error);
       }
@@ -863,6 +921,10 @@ export default function MapPage() {
     userId,
     followedUsers,
   ]);
+
+  useEffect(() => {
+    includePastRef.current = includePast;
+  }, [includePast]);
 
   const toggleCategory = (cat: EventCategory) => {
     setActiveCategories((prev) => {
@@ -1025,7 +1087,7 @@ export default function MapPage() {
         `/events/${selectedEvent.id}/participants/${userId}`,
         { Authorization: `Bearer ${token}` }
       );
-      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 });
+      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 , participants: (selectedEvent.participants ?? []).filter(participant => participant.id !== Number(userId)) });
       messageApi.success("You left the event.");
 
       if (chatEventRef.current?.id === selectedEvent.id) {
@@ -1100,7 +1162,7 @@ export default function MapPage() {
   }
 };
 
-
+  /*
   const handleSubmitRating = async (score: number) => {
     if (!selectedEvent) return;
     setSubmittingRating(true);
@@ -1132,6 +1194,7 @@ export default function MapPage() {
       messageApi.error(error instanceof Error ? error.message : "Failed to unfollow.");
     }
   };
+  */
 
   const handleSendMessage = () => {
     const text = chatInput.trim();
@@ -1145,6 +1208,25 @@ export default function MapPage() {
       }),
     });
     setChatInput("");
+  };
+
+  const handleSubmitRating = async (score: number) => {
+    if (!selectedEvent) return;
+    setSubmittingRating(true);
+    try {
+      await apiService.post(
+        `/events/${selectedEvent.id}/ratings`,
+        { score },
+        { Authorization: `Bearer ${token}` }
+      );
+      setMyRating(score);
+      messageApi.success("Rating submitted");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to submit rating";
+      messageApi.error(msg);
+    } finally {
+      setSubmittingRating(false);
+    }
   };
 
   const handleSubmit = async (values: EventFormValues) => {
@@ -1234,6 +1316,36 @@ export default function MapPage() {
     } finally { setJoiningEvent(false); }
   };
 
+  const handleFollowUser = async (targetUserId: number | null) => {
+    try {
+      await apiService.post(`/users/${targetUserId}/follow`,
+        {},
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      await fetchFollowing();
+      messageApi.success(`You are now following ${targetUserId}`);
+    }
+    catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to follow.";
+      messageApi.error(msg);
+    }
+  };
+
+  const handleUnFollowUser = async (targetUserId: number | null) => {
+    try {
+      await apiService.delete<User>(`/users/${targetUserId}/follow`,
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      await fetchFollowing();
+      messageApi.success(`You unfollowed ${targetUserId}`);
+    }
+    catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to unfollow.";
+      messageApi.error(msg);
+    }
+  };
 
   if (!isMounted) {
     return (
@@ -1785,18 +1897,120 @@ export default function MapPage() {
                 <span style={label}>End</span>
                 <p style={{ ...value, marginBottom: 0 }}>{fmt(selectedEvent.endTime)}</p>
               </div>
+              
+              {/* Participants */}
+              <div style={card}>
+                <span style={label}>
+                  Participants ({selectedEvent.participantCount ?? selectedEvent.participants?.length ?? 0})
+                </span>
+
+                {(selectedEvent.participantCount ?? selectedEvent.participants?.length ?? 0) > 0 ? (
+                  <div
+                    style={{
+                      marginTop: 10,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                      maxHeight: 190,
+                      overflowY: "auto",
+                      paddingRight: 8,
+                    }}
+                  >
+                    {selectedEvent.participants?.map((participant) => (
+                      <div
+                        key={participant.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          padding: "8px 10px",
+                          borderRadius: 10,
+                          backgroundColor: "#f3f4f6",
+                        }}
+                      >
+                        {/* Username */}
+                        <span
+                          onClick={() => router.push(`/users/${participant.id}`)}
+                          style={{
+                            cursor: "pointer",
+                            fontWeight: 600,
+                            color: "#111827",
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.opacity = "0.7";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = "1";
+                          }}
+                        >
+                          {Number(participant.id) === Number(userId)
+                            ? `${participant.username} (You)`
+                            : Number(participant.id) === Number(selectedEvent.creatorId)
+                            ? `${participant.username} (Creator)`
+                            : participant.username}
+                        </span>
+
+                        {/* Buttons */}
+                        {Number(participant.id) !== Number(userId) && (
+                          <div style={{ display: "flex", gap: 8 }}>
+                            {followedUsers.some((u) => Number(u.id) === Number(participant.id)) ? (
+                              <Button
+                                onClick={() => handleUnFollowUser(Number(participant.id))}
+                                size="small"
+                              >
+                                Unfollow
+                              </Button>
+                            ) : (
+                              <Button
+                                onClick={() => handleFollowUser(Number(participant.id))}
+                                size="small"
+                                type="primary"
+                              >
+                                Follow
+                              </Button>
+                            )}
+
+                            <Button
+                              onClick={() => router.push(`/users/${participant.id}`)}
+                              size="small"
+                            >
+                              Visit
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ ...value, color: "#9ca3af" }}>No participants yet</p>
+                )}
+              </div>
 
               {/* Invite code */}
               {isCreator && selectedEvent.inviteCode && (
                 <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
                     <span style={label}>Invite Code</span>
-                    <p style={{ ...value, fontFamily: "monospace", letterSpacing: 2 }}>{selectedEvent.inviteCode}</p>
+                    <p style={{ ...value, fontFamily: "monospace", letterSpacing: 2 }}>
+                      {selectedEvent.inviteCode}
+                    </p>
                   </div>
                   <button
                     onClick={() => navigator.clipboard.writeText(selectedEvent.inviteCode ?? "")}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: catColor, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}
-                  >Copy</button>
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: catColor,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    Copy
+                  </button>
                 </div>
               )}
 
@@ -1804,22 +2018,33 @@ export default function MapPage() {
               {!isCreator && selectedEvent.isParticipant && (
                 <div style={card}>
                   <span style={label}>Rate Organizer</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
-                    <ConfigProvider theme={{ token: { colorFillContent: catColor, colorFillContentHover: catColor } }}>
-                      <Rate
-                        value={myRating ?? 0}
-                        onChange={handleSubmitRating}
-                        disabled={submittingRating}
-                        style={{ color: catColor, fontSize: 22 }}
-                      />
-                    </ConfigProvider>
-                    {myRating !== null && (
-                      <span style={{ color: "#9ca3af", fontSize: 13 }}>{myRating}/5</span>
-                    )}
-                    {submittingRating && (
-                      <span style={{ color: "#6b7280", fontSize: 12 }}>Saving…</span>
-                    )}
-                  </div>
+
+                  {new Date(selectedEvent.endTime) < new Date() ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
+                      <ConfigProvider theme={{ token: { colorFillContent: catColor, colorFillContentHover: catColor } }}>
+                        <Rate
+                          value={myRating ?? 0}
+                          onChange={handleSubmitRating}
+                          disabled={submittingRating || myRating !== null}
+                          style={{ color: catColor, fontSize: 22 }}
+                        />
+                      </ConfigProvider>
+
+                      {myRating !== null && (
+                        <span style={{ color: "#9ca3af", fontSize: 13 }}>
+                          You rated {myRating}/5
+                        </span>
+                      )}
+
+                      {submittingRating && (
+                        <span style={{ color: "#6b7280", fontSize: 12 }}>Saving…</span>
+                      )}
+                    </div>
+                  ) : (
+                    <p style={{ ...value, color: "#9ca3af", fontSize: 13 }}>
+                      Available after event ends
+                    </p>
+                  )}
                 </div>
               )}
 
