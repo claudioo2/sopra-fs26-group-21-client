@@ -624,9 +624,17 @@ export default function MapPage() {
 
   // Fetch participant user objects when a modal opens so we can show follow/unfollow
   useEffect(() => {
-    const participantIds = selectedEvent ? getParticipantIds(selectedEvent) : [];
+    if (!selectedEvent || !token) {
+      setParticipantUsers([]);
+      return;
+    }
 
-    if (!participantIds.length || !token) {
+    const participantIds = getParticipantIds(selectedEvent);
+
+    console.log("selectedEvent:", selectedEvent);
+    console.log("participantIds:", participantIds);
+
+    if (participantIds.length === 0) {
       setParticipantUsers([]);
       return;
     }
@@ -635,7 +643,7 @@ export default function MapPage() {
 
     const fetchParticipants = async () => {
       try {
-        const ids = participantIds.slice(0, 30); // cap to 30
+        const ids = participantIds.slice(0, 30);
 
         const users = await Promise.all(
           ids.map((id) =>
@@ -645,9 +653,15 @@ export default function MapPage() {
           )
         );
 
-        if (!cancelled) setParticipantUsers(users);
-      } catch {
-        if (!cancelled) setParticipantUsers([]);
+        if (!cancelled) {
+          setParticipantUsers(users);
+        }
+      } catch (error) {
+        console.error("Failed to fetch participants:", error);
+
+        if (!cancelled) {
+          setParticipantUsers([]);
+        }
       }
     };
 
@@ -656,7 +670,7 @@ export default function MapPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedEvent?.id, selectedEvent?.participants, token, apiService]);
+  }, [selectedEvent, token, apiService]);
 
   // #49 — Subscribe in background to all user events and show a notification on new messages
   useEffect(() => {
