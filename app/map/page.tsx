@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Supercluster from "supercluster";
-import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Select, Rate } from "antd";
+import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal, Select, Rate } from "antd";
 import { LockOutlined, GlobalOutlined, PlusOutlined, CompassOutlined, UserOutlined, KeyOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
@@ -75,7 +75,7 @@ interface Message {
   eventId: number;
 }
 
-const DEFAULT_CENTER: [number, number] = [13.405, 52.52]; // Berlin fallback
+const DEFAULT_CENTER: [number, number] = [8.5404, 47.378]; // Zurich fallback
 
 const CLUSTER_RADIUS = 50;       // px — supercluster grouping radius
 const CLUSTER_MAX_ZOOM = 16;     // beyond this zoom we stop clustering
@@ -83,6 +83,22 @@ const SPIDER_LEAF_RADIUS = 64;   // px — distance from cluster centre to each 
 const SPIDER_LEAF_RADIUS_PER_LEAF = 3; // grow the circle a bit when many leaves
 
 type EventFeatureProps = { event: EventDTO };
+
+function getParticipantIds(event: EventDTO): number[] {
+  const eventWithOldIds = event as EventDTO & {
+    participantIds?: number[];
+  };
+
+  if (event.participants?.length) {
+    return event.participants.map((u) => Number(u.id));
+  }
+
+  if (eventWithOldIds.participantIds?.length) {
+    return eventWithOldIds.participantIds.map((id) => Number(id));
+  }
+
+  return [];
+}
 
 function buildPinSvg(category: EventCategory | null | undefined): string {
   const color = category ? CATEGORY_COLORS[category] : "#94a3b8";
@@ -240,6 +256,8 @@ export default function MapPage() {
   const { value: userId, clear: clearUserId } = useLocalStorage<string>("userId", "");
   const [isMounted, setIsMounted] = useState(false);
 
+  const eventsByIdRef = useRef<Map<number, EventDTO>>(new Map());
+  const pulseAnimationRef = useRef<number | null>(null);
   const ENABLE_CHAT_NOTIFICATIONS = false;
 
   const clearSpider = useCallback(() => {
@@ -248,144 +266,260 @@ export default function MapPage() {
     spiderClusterIdRef.current = null;
   }, []);
 
-  const clearAllMarkers = useCallback(() => {
-    clearSpider();
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-  }, [clearSpider]);
+  const renderEventMarkers = async (map: mapboxgl.Map, events: EventDTO[]) => {
+    eventsByIdRef.current = new Map(events.map((event) => [event.id, event]));
 
-  const spiderfy = useCallback(
-    (clusterId: number, lngLat: [number, number], leaves: EventDTO[]) => {
-      const map = mapInstanceRef.current;
-      if (!map) return;
-      clearSpider();
-      spiderClusterIdRef.current = clusterId;
+    await loadCategoryPinIcons(map);
 
-      const n = leaves.length;
-      const radius = SPIDER_LEAF_RADIUS + Math.max(0, n - 8) * SPIDER_LEAF_RADIUS_PER_LEAF;
+    const geojson: GeoJSON.FeatureCollection<GeoJSON.Point> = {
+      type: "FeatureCollection",
+      features: events.map((event) => {
+        const now = new Date();
 
-      leaves.forEach((event, i) => {
-        const angle = (2 * Math.PI * i) / n - Math.PI / 2;
-        const dx = Math.cos(angle) * radius;
-        const dy = Math.sin(angle) * radius;
+        const isOngoing =
+          new Date(event.startTime) <= now && now <= new Date(event.endTime);
+        
+        return {
+            type: "Feature",
+            geometry: {
+              type: "Point", 
+              coordinates: [Number(event.longitude), Number(event.latitude)],
+            },
+          properties: {
+            eventId: event.id,
+            icon: `pin-${event.category ?? "OTHER"}`,
+            color: event.category ? CATEGORY_COLORS[event.category] : "#94a3b8",
+            isOngoing,
+          },
+        };
+      }),
+    }
 
-        const wrapper = document.createElement("div");
-        wrapper.style.cssText = "position:relative; width:0; height:0;";
+    const existingSource = map.getSource("events-source") as
+      | mapboxgl.GeoJSONSource
+      | undefined;
 
-        const line = document.createElement("div");
-        line.className = "spider-line";
-        line.style.transform = `rotate(${angle}rad)`;
-        line.style.width = "0px";
-        wrapper.appendChild(line);
+    if (existingSource) {
+      existingSource.setData(geojson);
+      return;
+    }
 
-        const leaf = document.createElement("div");
-        leaf.className = "spider-leaf";
-        leaf.style.transform = "translate(0px, 0px)";
-        leaf.innerHTML = buildPinSvg(event.category);
-        leaf.title = event.title;
-        leaf.addEventListener("click", (ev) => {
-          ev.stopPropagation();
-          setSelectedEvent(event);
-        });
-        wrapper.appendChild(leaf);
+    map.addSource("events-source", {
+      type: "geojson",
+      data: geojson,
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 50,
+    });
 
-        const marker = new mapboxgl.Marker({ element: wrapper, anchor: "center" })
-          .setLngLat(lngLat)
-          .addTo(map);
-        spiderMarkersRef.current.push(marker);
+    map.addLayer({
+      id: "event-clusters",
+      type: "circle",
+      source: "events-source",
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-radius": [
+          "step",
+          ["get", "point_count"],
+          22,
+          10,
+          28,
+          30,
+          36,
+        ],
+        "circle-opacity": 0.85,
+      },
+    });
 
-        // Animate outward on next frame so the transition fires
-        requestAnimationFrame(() => {
-          leaf.style.transform = `translate(${dx}px, ${dy}px)`;
-          line.style.width = `${radius}px`;
-        });
-      });
-    },
-    [clearSpider],
-  );
+    map.addLayer({
+      id: "event-cluster-count",
+      type: "symbol",
+      source: "events-source",
+      filter: ["has", "point_count"],
+      layout: {
+        "text-field": ["get", "point_count_abbreviated"],
+        "text-size": 14,
+      },
+    });
 
-  const renderClusters = useCallback(
-    (events: EventDTO[]) => {
-      const map = mapInstanceRef.current;
-      if (!map) return;
-      clearAllMarkers();
+    map.addLayer({
+      id: "events-pulse",
+      type: "circle",
+      source: "events-source",
+      filter: ["!", ["has", "point_count"]],
+      /*filter: ["==", ["get", "isOngoing"], true], */
+      paint: {
+        "circle-radius": 24,
+        "circle-color": ["get", "color"],
+        "circle-opacity": 0.35,
+        "circle-translate": [0, -36],
+      },
+    });
 
-      const features: Supercluster.PointFeature<EventFeatureProps>[] = events.map((event) => ({
-        type: "Feature",
-        properties: { event },
-        geometry: { type: "Point", coordinates: [event.longitude, event.latitude] },
-      }));
+    map.addLayer({
+      id: "events-hitbox",
+      type: "circle",
+      source: "events-source",
+      filter: ["!", ["has", "point_count"]],
+      paint: {
+        "circle-radius": 30,
+        "circle-color": "#000000",
+        "circle-opacity": 0,
+        "circle-translate": [0, -36],
+      },
+    });
 
-      const index = new Supercluster<EventFeatureProps>({
-        radius: CLUSTER_RADIUS,
-        maxZoom: CLUSTER_MAX_ZOOM,
-      });
-      index.load(features);
-      superclusterRef.current = index;
+    map.addLayer({
+      id: "events-pins",
+      type: "symbol",
+      source: "events-source",
+      filter: ["!", ["has", "point_count"]],
+      layout: {
+        "icon-image": ["get", "icon"],
+        "icon-size": 1.8,
+        "icon-anchor": "bottom",
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true,
+      },
+    });
 
-      const bounds = map.getBounds();
-      if (!bounds) return;
-      const bbox: [number, number, number, number] = [
-        bounds.getWest(),
-        bounds.getSouth(),
-        bounds.getEast(),
-        bounds.getNorth(),
-      ];
-      const zoom = Math.floor(map.getZoom());
-      const clusters = index.getClusters(bbox, zoom);
 
-      if (!map.getContainer()?.isConnected) return;
+    if (pulseAnimationRef.current !== null) {
+      cancelAnimationFrame(pulseAnimationRef.current);
+      pulseAnimationRef.current = null;
+    }
 
-      clusters.forEach((feat) => {
-        if (!map.getContainer()?.isConnected) return;
 
-        const [lng, lat] = feat.geometry.coordinates as [number, number];
-        const props = feat.properties as Supercluster.AnyProps;
-
-        if (props.cluster) {
-          const clusterId = props.cluster_id as number;
-          const total = props.point_count as number;
-          const leaves = index.getLeaves(clusterId, Infinity) as Supercluster.PointFeature<EventFeatureProps>[];
-          const counts: Partial<Record<EventCategory, number>> = {};
-          for (const leaf of leaves) {
-            const cat = leaf.properties.event.category ?? "OTHER";
-            counts[cat] = (counts[cat] ?? 0) + 1;
-          }
-          const element = buildClusterElement(counts, total);
-          element.addEventListener("click", (ev) => {
-            ev.stopPropagation();
-            // If this same cluster is already spiderfied, collapse it.
-            if (spiderClusterIdRef.current === clusterId) {
-              clearSpider();
-              return;
-            }
-            const expansionZoom = index.getClusterExpansionZoom(clusterId);
-            if (expansionZoom <= CLUSTER_MAX_ZOOM) {
-              clearSpider();
-              map.easeTo({ center: [lng, lat], zoom: expansionZoom, duration: 500 });
-            } else {
-              spiderfy(
-                clusterId,
-                [lng, lat],
-                leaves.map((l) => l.properties.event),
-              );
-            }
-          });
-          const marker = new mapboxgl.Marker({ element, anchor: "center" })
-            .setLngLat([lng, lat])
-            .addTo(map);
-          markersRef.current.push(marker);
-        } else {
-          const event = (props as EventFeatureProps).event;
-          const wrapper = buildPinElement(event);
-          wrapper.addEventListener("click", () => setSelectedEvent(event));
-          const marker = new mapboxgl.Marker(wrapper).setLngLat([lng, lat]).addTo(map);
-          markersRef.current.push(marker);
+    if (pulseAnimationRef.current === null) {
+      const animatePulse = () => {
+        if (!map.getLayer("events-pulse")) {
+          pulseAnimationRef.current = null;
+          return;
         }
+
+        const time = Date.now() / 1000;
+        const progress = (Math.sin(time * 3) + 1) / 2;
+
+        const radius = 18 + progress * 18;
+        const opacity = 0.45 - progress * 0.35;
+
+        map.setPaintProperty("events-pulse", "circle-radius", radius);
+        map.setPaintProperty("events-pulse", "circle-opacity", opacity);
+
+        pulseAnimationRef.current = requestAnimationFrame(animatePulse);
+      };
+
+      pulseAnimationRef.current = requestAnimationFrame(animatePulse);
+    }
+
+    map.on("click", "events-hitbox", (e) => {
+      const feature = e.features?.[0];
+      const eventId = feature?.properties?.eventId;
+
+      if (eventId == null) return;
+
+      const event = eventsByIdRef.current.get(Number(eventId));
+
+      if (event) {
+        setSelectedEvent(event);
+      }
+    });
+
+    map.on("click", "event-clusters", (e) => {
+      const features = map.queryRenderedFeatures(e.point, {
+        layers: ["event-clusters"],
       });
-    },
-    [clearAllMarkers, clearSpider, spiderfy],
-  );
+
+      const clusterId = features[0]?.properties?.cluster_id;
+
+      if (clusterId == null) return;
+
+      const source = map.getSource("events-source") as mapboxgl.GeoJSONSource;
+
+      source.getClusterExpansionZoom(Number(clusterId), (err, zoom) => {
+        if (err || zoom == null) return;
+
+        const coordinates = (features[0].geometry as GeoJSON.Point).coordinates as [
+          number,
+          number,
+        ];
+
+        map.easeTo({
+          center: coordinates,
+          zoom,
+          duration: 500,
+        });
+      });
+    });
+
+    map.on("mouseenter", "events-hitbox", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "events-hitbox", () => {
+      map.getCanvas().style.cursor = "";
+    });
+
+    map.on("mouseenter", "event-clusters", () => {
+      map.getCanvas().style.cursor = "pointer";
+    });
+
+    map.on("mouseleave", "event-clusters", () => {
+      map.getCanvas().style.cursor = "";
+    });
+  };
+
+
+
+  const loadCategoryPinIcons = async (map: mapboxgl.Map) => {
+    const categories = Object.keys(CATEGORY_ICONS) as Array<keyof typeof CATEGORY_ICONS>;
+
+    for (const category of categories) {
+      const imageId = `pin-${category}`;
+
+      if (map.hasImage(imageId)) continue;
+
+      const color =
+        category in CATEGORY_COLORS
+          ? CATEGORY_COLORS[category as EventCategory]
+          : "#94a3b8";
+
+      const icon = CATEGORY_ICONS[category];
+
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="62" viewBox="0 0 48 62">
+          <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="rgba(0,0,0,0.35)"/>
+          </filter>
+
+          <g filter="url(#shadow)">
+            <circle cx="24" cy="24" r="22" fill="${color}"/>
+            <circle cx="24" cy="24" r="22" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+            <polygon points="24,62 15,40 33,40" fill="${color}"/>
+          </g>
+
+          <g transform="translate(12, 12)" fill="white" stroke="white">
+            <svg viewBox="0 0 24 24" width="24" height="24">
+              ${icon}
+            </svg>
+          </g>
+        </svg>
+      `;
+
+      const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = url;
+      });
+
+      if (!map.hasImage(imageId)) {
+        map.addImage(imageId, image, { pixelRatio: 2 });
+      }
+    }
+  };
 
   // Resize the map after any panel opens or closes.
   // useEffect fires after React commits the DOM change, so the map div already
@@ -400,6 +534,27 @@ export default function MapPage() {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  // Fetch my rating when an event modal opens
+  useEffect(() => {
+    console.log(typeof selectedEvent?.participants?.[0]?.id);
+    if (!selectedEvent || !token) {
+      setMyRating(null);
+      return;
+    }
+    const fetchMyRating = async () => {
+      try {
+        const r = await apiService.get<{ score: number } | null>(
+          `/events/${selectedEvent.id}/ratings/me`,
+          { Authorization: `Bearer ${token}` }
+        );
+        setMyRating(r?.score ?? null);
+      } catch {
+        setMyRating(null);
+      }
+    };
+    fetchMyRating();
+  }, [selectedEvent, token, apiService]);
 
   // Auth guard — delays check by one render to avoid SSR/localStorage issues
   useEffect(() => {
@@ -422,16 +577,27 @@ export default function MapPage() {
     validate();
   }, [token, apiService, router, clearToken, isMounted]);
 
-
+  // fetch the following users
   const fetchFollowing = useCallback(async () => {
     if (!token) return;
+
     try {
-      const data = await apiService.get<User[]>("/users/following", { Authorization: `Bearer ${token}` });
+      const data = await apiService.get<User[]>(
+        "/users/following",
+        { Authorization: `Bearer ${token}` }
+      );
+
       setFollowedUsers(data);
+
     } catch (err) {
       console.error("Failed to fetch following", err);
     }
   }, [token, apiService]);
+
+  useEffect(() => {
+    fetchFollowing();
+  }, [fetchFollowing]);
+
 
   useEffect(() => { fetchFollowing(); }, [fetchFollowing]);
 
@@ -439,8 +605,13 @@ export default function MapPage() {
     if (!userId || !token) return;
     const fetchUser = async () => {
       try {
-        const data = await apiService.get<User>(`/users/${userId}`, { Authorization: `Bearer ${token}` });
+        const data = await apiService.get<User>(
+          `/users/${userId}`,
+          { Authorization: `Bearer ${token}` }
+        );
+
         setUser(data);
+
       } catch (err) {
         console.error("Failed to fetch user", err);
       }
@@ -465,21 +636,53 @@ export default function MapPage() {
 
   // Fetch participant user objects when a modal opens so we can show follow/unfollow
   useEffect(() => {
-    if (!selectedEvent?.participantIds?.length || !token) { setParticipantUsers([]); return; }
+    if (!selectedEvent || !token) {
+      setParticipantUsers([]);
+      return;
+    }
+
+    const participantIds = getParticipantIds(selectedEvent);
+
+    console.log("selectedEvent:", selectedEvent);
+    console.log("participantIds:", participantIds);
+
+    if (participantIds.length === 0) {
+      setParticipantUsers([]);
+      return;
+    }
+
     let cancelled = false;
+
     const fetchParticipants = async () => {
       try {
-        const ids = (selectedEvent.participantIds ?? []).slice(0, 30); // cap to 30
+        const ids = participantIds.slice(0, 30);
+
         const users = await Promise.all(
-          ids.map((id) => apiService.get<User>(`/users/${id}`, { Authorization: `Bearer ${token}` }))
+          ids.map((id) =>
+            apiService.get<User>(`/users/${id}`, {
+              Authorization: `Bearer ${token}`,
+            })
+          )
         );
-        if (!cancelled) setParticipantUsers(users);
-      } catch { if (!cancelled) setParticipantUsers([]); }
+
+        if (!cancelled) {
+          setParticipantUsers(users);
+        }
+      } catch (error) {
+        console.error("Failed to fetch participants:", error);
+
+        if (!cancelled) {
+          setParticipantUsers([]);
+        }
+      }
     };
+
     fetchParticipants();
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEvent?.id, token, apiService]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedEvent, token, apiService]);
 
   // #49 — Subscribe in background to all user events and show a notification on new messages
   useEffect(() => {
@@ -576,18 +779,23 @@ export default function MapPage() {
 
     mapboxgl.accessToken = accessToken;
 
-    const fetchAndDisplayEvents = async (center: [number, number], categories: Set<EventCategory>) => {
+    
+
+    const fetchAndDisplayEvents = async (map: mapboxgl.Map, center: [number, number], categories: Set<EventCategory>) => {
       try {
         const [lng, lat] = center;
         let url = `/events?longitude=${lng}&latitude=${lat}&radius=20`;
         if (categories.size > 0) {
           categories.forEach((cat) => { url += `&categories=${cat}`; });
         }
+        if (includePastRef.current) url += `&includePast=true`;
         const events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
         const visible = events.filter(
-          (event) => !event.isPrivate || event.participantIds?.includes(Number(userId)),
+          (event) => !event.isPrivate || getParticipantIds(event).includes(Number(userId)),
         );
-        renderClusters(visible);
+
+        await renderEventMarkers(map, visible);
+
       } catch (error) {
         console.error("Failed to fetch events:", error);
       }
@@ -607,42 +815,60 @@ export default function MapPage() {
 
       map.addControl(
         new mapboxgl.GeolocateControl({
-          positionOptions: { enableHighAccuracy: true },
+          positionOptions: { enableHighAccuracy: false, timeout: 3000, maximumAge: 60000 },
           trackUserLocation: true,
           showUserHeading: true,
+      
         })
       );
 
       map.on("load", () => {
         mapCenterRef.current = center;
-        fetchAndDisplayEvents(center, activeCategories);
+        fetchAndDisplayEvents(map, center, activeCategories);
       });
 
       map.on("moveend", () => {
         const c = map.getCenter();
         mapCenterRef.current = [c.lng, c.lat];
         setSelectedLocation([c.lng, c.lat]);
-        fetchAndDisplayEvents([c.lng, c.lat], activeCategories);
+        fetchAndDisplayEvents(map, [c.lng, c.lat], activeCategories);
       });
 
-      // Click on empty map collapses any open spider.
+      // Click on empty map collapses any open map.
       map.on("click", () => {
-        clearSpider();
         if (chatEventRef.current) handleCloseChat();
       });
     };
 
+    // Render the map immediately on DEFAULT_CENTER, then flyTo the user once geolocation resolves.
+    // Avoids blocking first paint on a slow GPS lock.
+    initMap(DEFAULT_CENTER);
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          initMap([position.coords.longitude, position.coords.latitude]);
+          const userCenter: [number, number] = [
+            position.coords.longitude,
+            position.coords.latitude,
+          ];
+
+          mapCenterRef.current = userCenter;
+          mapInstanceRef.current?.flyTo({
+            center: userCenter,
+            zoom: 12,
+          });
+
+          mapInstanceRef.current?.fire("moveend");
         },
         () => {
-          initMap(DEFAULT_CENTER);
+          console.warn("Could not get user location. Using default center.");
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 3000,
+          maximumAge: 60000,
         }
       );
-    } else {
-      initMap(DEFAULT_CENTER);
     }
 
     return () => {
@@ -654,23 +880,39 @@ export default function MapPage() {
   // Re-fetch markers when category filters or myEventsOnly change
   useEffect(() => {
     if (!mapInstanceRef.current || !token) return;
+
+    const map = mapInstanceRef.current;
     const center = mapCenterRef.current;
     let cancelled = false;
+
     const fetchAndRefresh = async () => {
       let url = `/events?longitude=${center[0]}&latitude=${center[1]}&radius=20`;
+
       if (activeCategories.size > 0) {
-        activeCategories.forEach((cat) => { url += `&categories=${cat}`; });
+        activeCategories.forEach((cat) => {
+          url += `&categories=${cat}`;
+        });
       }
+      if (includePast) url += `&includePast=true`;
       try {
-        let events = await apiService.get<EventDTO[]>(url, { Authorization: `Bearer ${token}` });
+        let events = await apiService.get<EventDTO[]>(url, {
+          Authorization: `Bearer ${token}`,
+        });
+
         if (myEventsOnly) {
           const uid = Number(userId);
-          events = events.filter(e => e.creatorId === uid || e.participantIds?.includes(uid));
-        }
-        if (friendsOnly) {
-          events = events.filter(e =>
-            (e.participantIds ?? []).some(id => followedUsers.some(u => Number(u.id) === Number(id))),
+          events = events.filter(
+            (e) => e.creatorId === uid || getParticipantIds(e).includes(uid)
           );
+        }
+
+        if (friendsOnly) {
+          events = events.filter(
+            (e) => 
+              getParticipantIds(e).some((id) =>
+                followedUsers.some((user) => Number(user.id) === Number(id))
+              )
+            );
           if (followedUsers.length === 0) {
             messageApi.info("You are not following anyone yet.");
           } else if (events.length === 0) {
@@ -678,19 +920,37 @@ export default function MapPage() {
           }
         }
         events = events.filter(
-          (event) => !event.isPrivate || event.participantIds?.includes(Number(userId)),
+          (event) => 
+            !event.isPrivate || getParticipantIds(event).includes(Number(userId)),
         );
         if (cancelled || !mapInstanceRef.current) return;
-        renderClusters(events);
+
+        await renderEventMarkers(map, events);
+
       } catch (error) {
         console.error("Failed to refresh events:", error);
       }
     };
-    fetchAndRefresh();
-    return () => { cancelled = true; };
-  }, [activeCategories, myEventsOnly, friendsOnly, includePast, token, apiService, userId, followedUsers, renderClusters]);
 
-  useEffect(() => { includePastRef.current = includePast; }, [includePast]);
+    fetchAndRefresh();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeCategories,
+    myEventsOnly,
+    friendsOnly,
+    includePast,
+    token,
+    apiService,
+    userId,
+    followedUsers,
+  ]);
+
+  useEffect(() => {
+    includePastRef.current = includePast;
+  }, [includePast]);
 
   const toggleCategory = (cat: EventCategory) => {
     setActiveCategories((prev) => {
@@ -853,7 +1113,7 @@ export default function MapPage() {
         `/events/${selectedEvent.id}/participants/${userId}`,
         { Authorization: `Bearer ${token}` }
       );
-      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 });
+      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 , participants: (selectedEvent.participants ?? []).filter(participant => participant.id !== Number(userId)) });
       messageApi.success("You left the event.");
 
       if (chatEventRef.current?.id === selectedEvent.id) {
@@ -928,7 +1188,7 @@ export default function MapPage() {
   }
 };
 
-
+  /*
   const handleSubmitRating = async (score: number) => {
     if (!selectedEvent) return;
     setSubmittingRating(true);
@@ -960,6 +1220,7 @@ export default function MapPage() {
       messageApi.error(error instanceof Error ? error.message : "Failed to unfollow.");
     }
   };
+  */
 
   const handleSendMessage = () => {
     const text = chatInput.trim();
@@ -973,6 +1234,25 @@ export default function MapPage() {
       }),
     });
     setChatInput("");
+  };
+
+  const handleSubmitRating = async (score: number) => {
+    if (!selectedEvent) return;
+    setSubmittingRating(true);
+    try {
+      await apiService.post(
+        `/events/${selectedEvent.id}/ratings`,
+        { score },
+        { Authorization: `Bearer ${token}` }
+      );
+      setMyRating(score);
+      messageApi.success("Rating submitted");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to submit rating";
+      messageApi.error(msg);
+    } finally {
+      setSubmittingRating(false);
+    }
   };
 
   const handleSubmit = async (values: EventFormValues) => {
@@ -1062,8 +1342,72 @@ export default function MapPage() {
     } finally { setJoiningEvent(false); }
   };
 
+  const handleFollowUser = async (targetUserId: number | null) => {
+    try {
+      await apiService.post(`/users/${targetUserId}/follow`,
+        {},
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      await fetchFollowing();
+      messageApi.success(`You are now following ${targetUserId}`);
+    }
+    catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to follow.";
+      messageApi.error(msg);
+    }
+  };
 
-  if (!token) return null;
+  const handleUnFollowUser = async (targetUserId: number | null) => {
+    try {
+      await apiService.delete<User>(`/users/${targetUserId}/follow`,
+        { Authorization: `Bearer ${token}` }
+      );
+      
+      await fetchFollowing();
+      messageApi.success(`You unfollowed ${targetUserId}`);
+    }
+    catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to unfollow.";
+      messageApi.error(msg);
+    }
+  };
+
+  if (!isMounted) {
+    return (
+      <main
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+          color: "#475569",
+          fontSize: "16px",
+        }}
+      >
+        Loading application...
+      </main>
+    );
+  }
+
+  if (!token) {
+    return (
+      <main
+        style={{
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: "#f8fafc",
+          color: "#475569",
+          fontSize: "16px",
+        }}
+      >
+        Redirecting to login...
+      </main>
+    );
+  }
 
   const isCreator = selectedEvent !== null && Number(userId) === selectedEvent.creatorId;
 
@@ -1541,6 +1885,7 @@ export default function MapPage() {
               </div>
 
               {/* Participants list with follow/unfollow */}
+              
               {participantUsers.length > 0 && (
                 <div style={card}>
                   <span style={label}>Participants ({participantUsers.length})</span>
@@ -1580,40 +1925,66 @@ export default function MapPage() {
                 <p style={{ ...value, marginBottom: 0 }}>{fmt(selectedEvent.endTime)}</p>
               </div>
 
+
+
               {/* Invite code */}
               {isCreator && selectedEvent.inviteCode && (
                 <div style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div>
                     <span style={label}>Invite Code</span>
-                    <p style={{ ...value, fontFamily: "monospace", letterSpacing: 2 }}>{selectedEvent.inviteCode}</p>
+                    <p style={{ ...value, fontFamily: "monospace", letterSpacing: 2 }}>
+                      {selectedEvent.inviteCode}
+                    </p>
                   </div>
                   <button
                     onClick={() => navigator.clipboard.writeText(selectedEvent.inviteCode ?? "")}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: catColor, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}
-                  >Copy</button>
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: catColor,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: 1,
+                    }}
+                  >
+                    Copy
+                  </button>
                 </div>
               )}
 
               {/* Rate organizer */}
               {!isCreator && selectedEvent.isParticipant && (
                 <div style={card}>
-                  <span style={label}>Rate Organizer</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
-                    <ConfigProvider theme={{ token: { colorFillContent: catColor, colorFillContentHover: catColor } }}>
-                      <Rate
-                        value={myRating ?? 0}
-                        onChange={handleSubmitRating}
-                        disabled={submittingRating}
-                        style={{ color: catColor, fontSize: 22 }}
-                      />
-                    </ConfigProvider>
-                    {myRating !== null && (
-                      <span style={{ color: "#9ca3af", fontSize: 13 }}>{myRating}/5</span>
-                    )}
-                    {submittingRating && (
-                      <span style={{ color: "#6b7280", fontSize: 12 }}>Saving…</span>
-                    )}
-                  </div>
+                  <span style={label}>Event Rating</span>
+
+                  {new Date(selectedEvent.endTime) < new Date() ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 10 }}>
+                      <ConfigProvider theme={{ token: { colorFillContent: catColor, colorFillContentHover: catColor } }}>
+                        <Rate
+                          value={myRating ?? 0}
+                          onChange={handleSubmitRating}
+                          disabled={submittingRating || myRating !== null}
+                          style={{ color: catColor, fontSize: 22 }}
+                        />
+                      </ConfigProvider>
+
+                      {myRating !== null && (
+                        <span style={{ color: "#9ca3af", fontSize: 13 }}>
+                          You rated {myRating}/5
+                        </span>
+                      )}
+
+                      {submittingRating && (
+                        <span style={{ color: "#6b7280", fontSize: 12 }}>Saving…</span>
+                      )}
+                    </div>
+                  ) : (
+                    <p style={{ ...value, color: "#9ca3af", fontSize: 13 }}>
+                      Available after the event is over.
+                    </p>
+                  )}
                 </div>
               )}
 

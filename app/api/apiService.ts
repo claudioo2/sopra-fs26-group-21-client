@@ -6,7 +6,7 @@ export class ApiService {
   private defaultHeaders: HeadersInit;
 
   constructor() {
-    this.baseURL = getApiDomain();
+    this.baseURL = getApiDomain().replace(/\/$/, "");
     this.defaultHeaders = {
       "Content-Type": "application/json",
     };
