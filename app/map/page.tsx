@@ -260,6 +260,9 @@ export default function MapPage() {
   const pulseAnimationRef = useRef<number | null>(null);
   const ENABLE_CHAT_NOTIFICATIONS = false;
 
+  const [eventsAtLocation, setEventsAtLocation] = useState<EventDTO[]>([]);
+  const [locationEventsOpen, setLocationEventsOpen] = useState(false);
+
   const clearSpider = useCallback(() => {
     spiderMarkersRef.current.forEach((m) => m.remove());
     spiderMarkersRef.current = [];
@@ -430,7 +433,11 @@ export default function MapPage() {
         layers: ["event-clusters"],
       });
 
-      const clusterId = features[0]?.properties?.cluster_id;
+      const clusterFeature = features[0];
+
+      if (!clusterFeature) return;
+
+      const clusterId = clusterFeature.properties?.cluster_id;
 
       if (clusterId == null) return;
 
@@ -439,15 +446,33 @@ export default function MapPage() {
       source.getClusterExpansionZoom(Number(clusterId), (err, zoom) => {
         if (err || zoom == null) return;
 
-        const coordinates = (features[0].geometry as GeoJSON.Point).coordinates as [
-          number,
-          number,
-        ];
+        const coordinates = (clusterFeature.geometry as GeoJSON.Point)
+          .coordinates as [number, number];
 
-        map.easeTo({
-          center: coordinates,
-          zoom,
-          duration: 500,
+        const currentZoom = map.getZoom();
+
+        if (zoom <= 14 && zoom > currentZoom) {
+          map.easeTo({
+            center: coordinates,
+            zoom,
+            duration: 500,
+          });
+
+          return;
+        }
+
+        source.getClusterLeaves(Number(clusterId), 100, 0, (leafErr, leaves) => {
+          if (leafErr || !leaves) return;
+
+          const events = leaves
+            .map((leaf) => {
+              const eventId = leaf.properties?.eventId;
+              return eventsByIdRef.current.get(Number(eventId));
+            })
+            .filter(Boolean) as EventDTO[];
+
+          setEventsAtLocation(events);
+          setLocationEventsOpen(true);
         });
       });
     });
@@ -1497,6 +1522,54 @@ export default function MapPage() {
         {/* Map */}
         <div style={{ flex: 1, position: "relative" }}>
           <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
+
+          <Modal
+            title={`${eventsAtLocation.length} events here`}
+            open={locationEventsOpen}
+            onCancel={() => setLocationEventsOpen(false)}
+            footer={null}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {eventsAtLocation.map((event) => (
+                <div
+                  key={event.id}
+                  onClick={() => {
+                    setSelectedEvent(event);
+                    setLocationEventsOpen(false);
+                    setPanelOpen(true);
+                  }}
+                  style={{
+                    padding: "12px",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    background: "#fff",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        backgroundColor: event.category
+                          ? CATEGORY_COLORS[event.category]
+                          : CATEGORY_COLORS.OTHER,
+                        display: "inline-block",
+                      }}
+                    />
+
+                    <strong>{event.title}</strong>
+                  </div>
+
+                  <div style={{ marginTop: 4, color: "#6b7280", fontSize: 13 }}>
+                    {event.category ?? "OTHER"} ·{" "}
+                    {new Date(event.startTime).toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Modal>
 
           {/* Brand overlay */}
           <div style={{
