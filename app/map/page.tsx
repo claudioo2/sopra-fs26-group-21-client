@@ -1524,50 +1524,153 @@ export default function MapPage() {
           <div ref={mapRef} style={{ position: "absolute", inset: 0 }} />
 
           <Modal
-            title={`${eventsAtLocation.length} events here`}
+            title={null}
             open={locationEventsOpen}
             onCancel={() => setLocationEventsOpen(false)}
             footer={null}
+            centered
+            width={760}
+            styles={{
+              content: {
+                backgroundColor: "#0f1115",
+                borderRadius: 24,
+                padding: 0,
+                overflow: "hidden",
+                border: "1px solid #252932",
+              },
+              body: {
+                padding: 0,
+              },
+            }}
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {eventsAtLocation.map((event) => (
-                <div
-                  key={event.id}
-                  onClick={() => {
-                    setSelectedEvent(event);
-                    setLocationEventsOpen(false);
-                    setPanelOpen(true);
-                  }}
-                  style={{
-                    padding: "12px",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    background: "#fff",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: "50%",
-                        backgroundColor: event.category
-                          ? CATEGORY_COLORS[event.category]
-                          : CATEGORY_COLORS.OTHER,
-                        display: "inline-block",
+            <div
+              style={{
+                padding: "20px 22px 24px",
+                backgroundColor: "#0f1115",
+                color: "#f3f4f6",
+              }}
+            >
+              <div
+                style={{
+                  marginBottom: 18,
+                  color: "#9ca3af",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  letterSpacing: 2,
+                  textTransform: "uppercase",
+                }}
+              >
+                Events · {eventsAtLocation.length}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {eventsAtLocation.map((event) => {
+                  const catColor = event.category
+                    ? CATEGORY_COLORS[event.category]
+                    : CATEGORY_COLORS.OTHER;
+
+                  const catIcon = event.category
+                    ? CATEGORY_ICONS[event.category]
+                    : CATEGORY_ICONS.OTHER;
+
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => {
+                        setSelectedEvent(event);
+                        setLocationEventsOpen(false);
+                        setPanelOpen(true);
                       }}
-                    />
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 18,
+                        padding: "20px 24px",
+                        borderRadius: 22,
+                        backgroundColor: "#171a20",
+                        border: "1px solid #2a2f3a",
+                        cursor: "pointer",
+                        transition: "transform 140ms ease, background-color 140ms ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "#1d2129";
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "#171a20";
+                        e.currentTarget.style.transform = "translateY(0)";
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 56,
+                          height: 56,
+                          borderRadius: "50%",
+                          backgroundColor: catColor,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <svg
+                          viewBox="0 0 24 24"
+                          width="25"
+                          height="25"
+                          dangerouslySetInnerHTML={{ __html: catIcon }}
+                        />
+                      </div>
 
-                    <strong>{event.title}</strong>
-                  </div>
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            color: "#f9fafb",
+                            fontSize: 21,
+                            fontWeight: 800,
+                            lineHeight: 1.2,
+                            marginBottom: 8,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {event.title}
+                        </div>
 
-                  <div style={{ marginTop: 4, color: "#6b7280", fontSize: 13 }}>
-                    {event.category ?? "OTHER"} ·{" "}
-                    {new Date(event.startTime).toLocaleString()}
-                  </div>
-                </div>
-              ))}
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            color: "#94a3b8",
+                            fontSize: 17,
+                            fontWeight: 500,
+                          }}
+                        >
+                          <span>
+                            {new Date(event.startTime).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+
+                          <span
+                            style={{
+                              color: catColor,
+                              fontWeight: 800,
+                            }}
+                          >
+                            {event.category
+                              ? CATEGORY_LABELS[event.category]
+                              : CATEGORY_LABELS.OTHER}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </Modal>
 
