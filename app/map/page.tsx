@@ -537,7 +537,6 @@ export default function MapPage() {
 
   // Fetch my rating when an event modal opens
   useEffect(() => {
-    console.log(typeof selectedEvent?.participants?.[0]?.id);
     if (!selectedEvent || !token) {
       setMyRating(null);
       return;
@@ -1113,7 +1112,9 @@ export default function MapPage() {
         `/events/${selectedEvent.id}/participants/${userId}`,
         { Authorization: `Bearer ${token}` }
       );
-      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 , participants: (selectedEvent.participants ?? []).filter(participant => participant.id !== Number(userId)) });
+      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 , participants: (selectedEvent.participants ?? []).filter(participant => participant.id !== Number(userId)), participantIds: (selectedEvent.participantIds ?? []).filter(id => Number(id) !== Number(userId)) });
+      setParticipantUsers((prev) => prev.filter((u) => Number(u.id) !== Number(userId)));
+      console.log("Left event:", selectedEvent);
       messageApi.success("You left the event.");
 
       if (chatEventRef.current?.id === selectedEvent.id) {
@@ -2012,9 +2013,9 @@ export default function MapPage() {
                       Join Chat
                     </button>
                     {!isCreator && (
-                      <button onClick={() => handleLeaveEvent(selectedEvent)}
+                      <button onClick={() => handleLeaveEvent(selectedEvent)} disabled={leavingEvent}
                         style={{ flex: 1, height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f87171", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
-                        Leave
+                        {leavingEvent ? "Leaving…" : "Leave Event"}
                       </button>
                     )}
                   </div>
