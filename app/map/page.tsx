@@ -1531,7 +1531,7 @@ export default function MapPage() {
             centered
             width={540}
             zIndex={900}
-            className="location-events-modal"
+            rootClassName="location-events-modal-root"
             closeIcon={<span style={{ color: "#fff", fontSize: 22, lineHeight: 1 }}>×</span>}
             style={{
               borderRadius: 24,
@@ -1627,8 +1627,8 @@ export default function MapPage() {
                         <div
                           style={{
                             color: "#f9fafb",
-                            fontSize: 21,
-                            fontWeight: 800,
+                            fontSize: 14,
+                            fontWeight: 600,
                             lineHeight: 1.2,
                             marginBottom: 8,
                             whiteSpace: "nowrap",
@@ -1650,23 +1650,13 @@ export default function MapPage() {
                           }}
                         >
                           <span>
-                            {new Date(event.startTime).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              year: "numeric",
+                            {new Date(event.startTime).toLocaleDateString([], {
+                              day: "numeric", month: "short", year: "numeric"
                             })}
                           </span>
 
-                          <span
-                            style={{
-                              color: catColor,
-                              fontWeight: 800,
-                            }}
-                          >
-                            {event.category
-                              ? CATEGORY_LABELS[event.category]
-                              : CATEGORY_LABELS.OTHER}
-                          </span>
+                          {event.category && <span style={{ color: catColor, marginLeft: 6, fontWeight: 500 }}>{CATEGORY_LABELS[event.category]}</span>}
+
                         </div>
                       </div>
                     </div>

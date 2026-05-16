@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { App as AntdApp, ConfigProvider, theme } from "antd";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import "@/styles/globals.css";
+import "./globals.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 const geistSans = Geist({

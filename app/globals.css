@@ -1,0 +1,28 @@
+.location-events-modal-root .ant-modal-content {
+  background: #0f1115 !important;
+  border: 1px solid #000 !important;
+  border-radius: 20px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55) !important;
+}
+
+.location-events-modal-root .ant-modal-body {
+  padding: 0 !important;
+  background: #0f1115 !important;
+}
+
+.location-events-modal-root .ant-modal-close {
+  color: #fff !important;
+  top: 10px !important;
+  right: 10px !important;
+}
+
+.location-events-modal-root .ant-modal-close-x {
+  color: #fff !important;
+}
+
+.location-events-modal-root .ant-modal-close:hover {
+  color: #fff !important;
+  opacity: 0.8;
+}
