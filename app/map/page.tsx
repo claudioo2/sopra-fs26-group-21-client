@@ -316,6 +316,39 @@ export default function MapPage() {
     });
 
     map.addLayer({
+      id: "event-clusters-glow",
+      type: "circle",
+      source: "events-source",
+      filter: ["has", "point_count"],
+      paint: {
+        "circle-radius": [
+          "step",
+          ["get", "point_count"],
+          28,
+          10,
+          34,
+          30,
+          42,
+          60,
+          50,
+        ],
+        "circle-color": [
+          "step",
+          ["get", "point_count"],
+          "#8b5cf6",
+          10,
+          "#3b82f6",
+          30,
+          "#22c55e",
+          60,
+          "#f97316",
+        ],
+        "circle-opacity": 0.18,
+        "circle-blur": 0.6,
+      },
+    });
+
+    map.addLayer({
       id: "event-clusters",
       type: "circle",
       source: "events-source",
@@ -324,13 +357,28 @@ export default function MapPage() {
         "circle-radius": [
           "step",
           ["get", "point_count"],
-          22,
+          20,   // 1-9
           10,
-          28,
+          26,   // 10-29
           30,
-          36,
+          32,   // 30-59
+          60,
+          38,   // 60+
         ],
-        "circle-opacity": 0.85,
+        "circle-color": [
+          "step",
+          ["get", "point_count"],
+          "#8b5cf6", // small clusters
+          10,
+          "#3b82f6", // medium
+          30,
+          "#22c55e", // bigger
+          60,
+          "#f97316", // large
+        ],
+        "circle-opacity": 0.92,
+        "circle-stroke-width": 3,
+        "circle-stroke-color": "#111827",
       },
     });
 
@@ -341,7 +389,11 @@ export default function MapPage() {
       filter: ["has", "point_count"],
       layout: {
         "text-field": ["get", "point_count_abbreviated"],
-        "text-size": 14,
+        "text-size": 15,
+        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+      },
+      paint: {
+        "text-color": "#ffffff",
       },
     });
 
