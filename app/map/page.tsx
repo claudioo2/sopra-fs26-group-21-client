@@ -1529,15 +1529,20 @@ export default function MapPage() {
             onCancel={() => setLocationEventsOpen(false)}
             footer={null}
             centered
-            width={760}
+            width={540}
+            zIndex={900}
+            className="location-events-modal"
+            closeIcon={<span style={{ color: "#fff", fontSize: 22, lineHeight: 1 }}>×</span>}
             style={{
               borderRadius: 24,
               overflow: "hidden",
             }}
-            bodyStyle={{
-              padding: 0,
-              backgroundColor: "#0f1115",
-              borderRadius: 24,
+            styles={{
+              body: {
+                padding: 0,
+                backgroundColor: "#0f1115",
+                borderRadius: 24,
+              },
             }}
           >
             <div
@@ -1573,21 +1578,21 @@ export default function MapPage() {
                   return (
                     <div
                       key={event.id}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         setSelectedEvent(event);
-                        setLocationEventsOpen(false);
-                        setPanelOpen(true);
                       }}
                       style={{
                         display: "flex",
                         alignItems: "center",
-                        gap: 18,
-                        padding: "20px 24px",
-                        borderRadius: 22,
+                        gap: 14,
+                        padding: "14px 16px",
+                        borderRadius: 16,
                         backgroundColor: "#171a20",
-                        border: "1px solid #2a2f3a",
+                        border: "1px solid #000",
                         cursor: "pointer",
-                        transition: "transform 140ms ease, background-color 140ms ease",
+                        /* transition: "transform 140ms ease, background-color 140ms ease", */
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.backgroundColor = "#1d2129";
@@ -1670,6 +1675,29 @@ export default function MapPage() {
               </div>
             </div>
           </Modal>
+
+          <style jsx global>{`
+            .location-events-modal .ant-modal-content {
+              background: #0f1115 !important;
+              border: 1px solid #000 !important;
+              border-radius: 24px !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+              box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55) !important;
+            }
+
+            .location-events-modal .ant-modal-body {
+              padding: 0 !important;
+              background: #0f1115 !important;
+              border-radius: 24px !important;
+            }
+
+            .location-events-modal .ant-modal-close {
+              color: #fff !important;
+              top: 12px !important;
+              right: 12px !important;
+            }
+          `}</style>
 
           {/* Brand overlay */}
           <div style={{
