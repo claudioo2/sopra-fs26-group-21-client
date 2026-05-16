@@ -1534,7 +1534,7 @@ export default function MapPage() {
             rootClassName="location-events-modal-root"
             closeIcon={<span style={{ color: "#fff", fontSize: 22, lineHeight: 1 }}>×</span>}
             style={{
-              borderRadius: 24,
+              borderRadius: 0,
               overflow: "hidden",
             }}
             styles={{
