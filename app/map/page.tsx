@@ -1530,17 +1530,14 @@ export default function MapPage() {
             footer={null}
             centered
             width={760}
-            styles={{
-              content: {
-                backgroundColor: "#0f1115",
-                borderRadius: 24,
-                padding: 0,
-                overflow: "hidden",
-                border: "1px solid #252932",
-              },
-              body: {
-                padding: 0,
-              },
+            style={{
+              borderRadius: 24,
+              overflow: "hidden",
+            }}
+            bodyStyle={{
+              padding: 0,
+              backgroundColor: "#0f1115",
+              borderRadius: 24,
             }}
           >
             <div
