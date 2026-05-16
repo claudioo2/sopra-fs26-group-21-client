@@ -72,6 +72,11 @@ const Profile: React.FC = () => {
         setUser(fetched);
         const fetchedEvents = await apiService.get<EventDTO[]>(`/users/${profileId}/events`, { Authorization: `Bearer ${token}` });
         setEvents(fetchedEvents);
+        const fetchedFollowing = await apiService.get<User[]>(`/users/following`, { Authorization: `Bearer ${token}` });
+        setFollowing(fetchedFollowing);
+        if (fetchedFollowing.some((u) => String(u.id) === String(profileId))) {
+          setIsFollowing(true);
+        }
       } catch (error) {
         if (error instanceof Error) alert(`Could not load profile:\n${error.message}`);
         router.push("/map");
@@ -81,15 +86,27 @@ const Profile: React.FC = () => {
   }, [apiService, profileId, token, router, isMounted]);
 
   const handleEdit = () => {
-    form.setFieldsValue({ username: user?.username, bio: user?.bio ?? "" });
-    setEditing(true);
-  };
+  form.setFieldsValue({
+    username: user?.username,
+    email: user?.email ?? "",
+    password: "",
+    bio: user?.bio ?? "",
+  });
+
+  setEditing(true);
+};
 
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
-      const updated = await apiService.put<User>(`/users/${profileId}`, { username: values.username, bio: values.bio });
+      const updated = await apiService.put<User>(`/users/${profileId}`, {
+        username: values.username,
+        email: values.email,
+        password: values.password || undefined,
+        bio: values.bio,
+      });
       setUser(updated);
+      form.resetFields(["password", "confirmPassword"]);
       setEditing(false);
     } catch (error) {
       if (error instanceof Error) alert(`Could not update profile:\n${error.message}`);
@@ -98,15 +115,42 @@ const Profile: React.FC = () => {
 
   const initials = user?.username ? user.username.slice(0, 2).toUpperCase() : "?";
   const isOnline = user?.status === "ONLINE";
+  console.log(user);
 
-  const handleLogout = () => {
-    setIsMounted(false);
-    clearToken();
-    clearUserId();
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      await apiService.put(`/users/${userId}`, {status: "OFFLINE"}, { Authorization: `Bearer ${token}` });
+      setIsMounted(false);
+      clearToken();
+      clearUserId();
+      messageApi.success("You are being logged out. See you next time!");
+      router.push("/login");
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : "Failed to logout");
+    }
   };
 
-  const handleFollowToggle = () => setIsFollowing((prev) => !prev);
+  const handleFollowToggle = async () => {
+    console.log(isFollowing ? "following" : "not followed");
+    const message: string = isFollowing ? "Failed to follow." : "Failed to unfollow.";
+    try {
+      if (isFollowing) {
+        await apiService.delete(`/users/${profileId}/follow`,
+          { Authorization: `Bearer ${token}` });
+        
+        setIsFollowing((prev) => !prev);
+        messageApi.success("You are not following " + user?.username + " anymore.");
+      } else {
+        await apiService.post(`/users/${profileId}/follow`,{},
+          { Authorization: `Bearer ${token}` });
+
+        setIsFollowing((prev) => !prev);
+        messageApi.success("You are now following " + user?.username + "!");
+      }
+    } catch (error) {
+      messageApi.error(error instanceof Error ? error.message : message);
+    }
+  };
 
   const handleOpenFollowingModal = async () => {
     setFollowingModalOpen(true);
@@ -233,14 +277,6 @@ const Profile: React.FC = () => {
           </button>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
             <span style={{ color: "#fff", fontWeight: 700, fontSize: 17 }}>{user?.username ?? "Profile"}</span>
-            {!isOwnProfile && (
-              <button
-                onClick={handleFollowToggle}
-                style={{ padding: "4px 14px", borderRadius: 999, border: `1.5px solid ${isFollowing ? "#444" : "#3897f0"}`, backgroundColor: isFollowing ? "transparent" : "#3897f0", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-              >
-                {isFollowing ? "Following" : "Follow"}
-              </button>
-            )}
           </div>
           {isOwnProfile && !editing && (
             <button onClick={handleEdit} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -277,23 +313,26 @@ const Profile: React.FC = () => {
               </div>
               <p style={{ margin: "0 0 2px 0", color: "#fff", fontWeight: 700, fontSize: 18 }}>{user?.username}</p>
             </div>
+            {!isOwnProfile && (
+              <button
+                onClick={handleFollowToggle}
+                style={{ padding: "5px 12px", borderRadius: 999, border: `1.5px solid ${isFollowing ? "#3a3f4a" : "#833ab4"}`, backgroundColor: isFollowing ? "transparent" : "#833ab4", color: isFollowing ? "#9ca3af" : "#ffffff", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+              >
+                {isFollowing ? "Unfollow" : "Follow"}
+              </button>
+            )}
           </div>
 
           {/* Bio / edit form */}
-          {!editing ? (
-            <p style={{ margin: "0 0 20px 0", color: user?.bio ? "#d1d5db" : "#4b5563", fontSize: 14, lineHeight: 1.6 }}>
-              {user?.bio ?? "No bio yet."}
-            </p>
-          ) : (
-            <Form form={form} layout="vertical" style={{ marginBottom: 20 }}>
-              <Form.Item name="username" rules={[{ required: true, message: "Username is required" }]} style={{ marginBottom: 12 }}>
-                <Input placeholder="Username" style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", borderRadius: 10 }} />
-              </Form.Item>
-              <Form.Item name="bio" style={{ marginBottom: 0 }}>
-                <Input.TextArea rows={3} placeholder="Write a bio…" style={{ backgroundColor: "#1c1c1c", borderColor: "#333", color: "#fff", resize: "none", borderRadius: 10 }} />
-              </Form.Item>
-            </Form>
-          )}
+          <p style={{
+              margin: "0 0 20px 0",
+              color: user?.bio ? "#d1d5db" : "#4b5563",
+              fontSize: 14,
+              lineHeight: 1.6,
+            }}
+          >
+            {user?.bio ?? "No bio yet."}
+          </p>
 
           {/* Action buttons */}
           {isOwnProfile && (
@@ -622,6 +661,261 @@ const Profile: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* The modal for editing profile */}
+      {editing && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1200,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(3px)",
+          }}
+          onClick={() => {
+            form.resetFields(["password", "confirmPassword"]);
+            setEditing(false);
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 420,
+              maxWidth: "calc(100vw - 32px)",
+              borderRadius: 24,
+              backgroundColor: "#16181D",
+              padding: 24,
+              boxShadow: "0 12px 48px rgba(0,0,0,0.55)",
+              border: "1px solid #2e3138",
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 20,
+              }}
+            >
+              <h2
+                style={{
+                  margin: 0,
+                  color: "#fff",
+                  fontSize: 20,
+                  fontWeight: 700,
+                }}
+              >
+                Edit Profile
+              </h2>
+
+              <button
+                onClick={() => setEditing(false)}
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 30,
+                  height: 30,
+                  cursor: "pointer",
+                  color: "#aaa",
+                  fontSize: 16,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <Form
+              form={form}
+              layout="vertical"
+              requiredMark={false}
+            >
+              {/* USERNAME */}
+              <Form.Item
+                label={<span style={{ color: "#d1d5db" }}>Username</span>}
+                name="username"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please input your username!",
+                  },
+                  {
+                    min: 3,
+                    message: "Username must be at least 3 characters.",
+                  },
+                ]}
+              >
+                <Input
+                  placeholder="Enter username"
+                  style={{
+                    backgroundColor: "#1c1c1c",
+                    borderColor: "#333",
+                    color: "#fff",
+                    borderRadius: 10,
+                    height: 42,
+                  }}
+                />
+              </Form.Item>
+
+              {/* EMAIL */}
+              <Form.Item
+                label={<span style={{ color: "#d1d5db" }}>Email</span>}
+                name="email"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please input your email!",
+                  },
+                  {
+                    type: "email",
+                    message: "Please enter a valid email address.",
+                  },
+                ]}
+              >
+                <Input
+                  placeholder="you@example.com"
+                  style={{
+                    backgroundColor: "#1c1c1c",
+                    borderColor: "#333",
+                    color: "#fff",
+                    borderRadius: 10,
+                    height: 42,
+                  }}
+                />
+              </Form.Item>
+
+              {/* NEW PASSWORD */}
+              <Form.Item
+                label={<span style={{ color: "#d1d5db" }}>New Password</span>}
+                name="password"
+                rules={[
+                  {
+                    min: 6,
+                    message: "Password must be at least 6 characters.",
+                  },
+                ]}
+                hasFeedback
+              >
+                <Input.Password
+                  placeholder="Enter new password"
+                  style={{
+                    backgroundColor: "#1c1c1c",
+                    borderColor: "#333",
+                    color: "#fff",
+                    borderRadius: 10,
+                    height: 42,
+                  }}
+                />
+              </Form.Item>
+
+              {/* CONFIRM PASSWORD */}
+              <Form.Item
+                label={<span style={{ color: "#d1d5db" }}>Verify Password</span>}
+                name="confirmPassword"
+                dependencies={["password"]}
+                hasFeedback
+                rules={[
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!getFieldValue("password") && !value) {
+                        return Promise.resolve();
+                      }
+
+                      if (getFieldValue("password") === value) {
+                        return Promise.resolve();
+                      }
+
+                      return Promise.reject(
+                        new Error("Passwords do not match.")
+                      );
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password
+                  placeholder="Verify new password"
+                  style={{
+                    backgroundColor: "#1c1c1c",
+                    borderColor: "#333",
+                    color: "#fff",
+                    borderRadius: 10,
+                    height: 42,
+                  }}
+                />
+              </Form.Item>
+
+              {/* BIO */}
+              <Form.Item
+                label={<span style={{ color: "#d1d5db" }}>Bio</span>}
+                name="bio"
+              >
+                <Input.TextArea
+                  rows={4}
+                  placeholder="Write your bio..."
+                  style={{
+                    backgroundColor: "#1c1c1c",
+                    borderColor: "#333",
+                    color: "#fff",
+                    resize: "none",
+                    borderRadius: 10,
+                  }}
+                />
+              </Form.Item>
+
+              {/* BUTTONS */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginTop: 10,
+                }}
+              >
+                <button
+                  onClick={() => {
+                    form.resetFields(["password", "confirmPassword"]);
+                    setEditing(false);
+                  }}
+                  type="button"
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    borderRadius: 999,
+                    border: "1px solid #3a3f4a",
+                    background: "transparent",
+                    color: "#aaa",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleSave}
+                  type="button"
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    borderRadius: 999,
+                    border: "none",
+                    background:
+                      "linear-gradient(135deg, #833ab4, #fd1d1d)",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </Form>
           </div>
         </div>
       )}
