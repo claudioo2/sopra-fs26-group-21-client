@@ -28,4 +28,5 @@ export interface EventDTO {
   participantIds: number[] | null;
   isParticipant?: boolean;
   participants?: UserPreview[] | null;
+  cancelledAt?: string | null;
 }
