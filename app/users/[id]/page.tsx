@@ -417,7 +417,10 @@ const Profile: React.FC = () => {
                           {event.category && <span style={{ color: catColor, marginLeft: 6, fontWeight: 500 }}>{CATEGORY_LABELS[event.category]}</span>}
                         </p>
                       </div>
-                      {event.isPrivate && (
+                      {event.cancelledAt && (
+                        <span style={{ fontSize: 10, color: "#ef4444", backgroundColor: "#2d1515", padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>Cancelled</span>
+                      )}
+                      {event.isPrivate && !event.cancelledAt && (
                         <span style={{ fontSize: 10, color: "#6b7280", backgroundColor: "#23262d", padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>Private</span>
                       )}
                     </div>
