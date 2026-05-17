@@ -343,7 +343,7 @@ export default function MapPage() {
       type: "geojson",
       data: geojson,
       cluster: true,
-      clusterMaxZoom: 14,
+      clusterMaxZoom: 18,
       clusterRadius: 50,
     });
 
