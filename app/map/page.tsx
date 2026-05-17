@@ -224,11 +224,43 @@ export default function MapPage() {
 
   const [user, setUser] = useState<User | null>(null);
   const [followedUsers, setFollowedUsers] = useState<User[]>([]);
-  const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(new Set());
-  const [myEventsOnly, setMyEventsOnly] = useState(false);
-  const [friendsOnly, setFriendsOnly] = useState(false);
-  const [includePast, setIncludePast] = useState(false);
-  const includePastRef = useRef(false);
+  const [activeCategories, setActiveCategories] = useState<Set<EventCategory>>(() => {
+    if (typeof window === "undefined") return new Set<EventCategory>();
+    try {
+      const saved = sessionStorage.getItem("filter_activeCategories");
+      return saved ? new Set(JSON.parse(saved) as EventCategory[]) : new Set<EventCategory>();
+    } catch { return new Set<EventCategory>(); }
+  });
+  const [myEventsOnly, setMyEventsOnly] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return JSON.parse(sessionStorage.getItem("filter_myEventsOnly") ?? "false") as boolean;
+  });
+  const [friendsOnly, setFriendsOnly] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return JSON.parse(sessionStorage.getItem("filter_friendsOnly") ?? "false") as boolean;
+  });
+  const [includePast, setIncludePast] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return JSON.parse(sessionStorage.getItem("filter_includePast") ?? "false") as boolean;
+  });
+  const includePastRef = useRef(
+    typeof window !== "undefined"
+      ? (JSON.parse(sessionStorage.getItem("filter_includePast") ?? "false") as boolean)
+      : false
+  );
+
+  useEffect(() => {
+    sessionStorage.setItem("filter_activeCategories", JSON.stringify([...activeCategories]));
+  }, [activeCategories]);
+  useEffect(() => {
+    sessionStorage.setItem("filter_myEventsOnly", JSON.stringify(myEventsOnly));
+  }, [myEventsOnly]);
+  useEffect(() => {
+    sessionStorage.setItem("filter_friendsOnly", JSON.stringify(friendsOnly));
+  }, [friendsOnly]);
+  useEffect(() => {
+    sessionStorage.setItem("filter_includePast", JSON.stringify(includePast));
+  }, [includePast]);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EventDTO | null>(null);
