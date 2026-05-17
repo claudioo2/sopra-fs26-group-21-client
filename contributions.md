@@ -136,3 +136,38 @@ reason).
 |                    | [08.05.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/433dd9c41509b2ecfcc17f90e7fb9b9f4849aa42] | [Users can follow (or unfollow) other participants of an event by clicking on "follow" or "unfollow"] | [This makes it possible for users to be connected with others and to see which events they are participating] |
 |                    | [10.05.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-server/commit/5adb1b47c5c616e21da0f39df2dd01b885300bab, https://github.com/claudioo2/sopra-fs26-group-21-client/commit/79301c1071b56842c7c448c1c7d755cc6ceb7798] | [The creator of an event should not be able to leave an event. The service logic for the leave-event endpoint needs to be modified to ensure this. From the front-end perspective, in the profile page of an creator, the button "leave event" should not appear but instead the "delete event" button.] | [This ensures that no event can exist without a creator who is responsible for organizing and managing it. Having a designated organizer is essential, as otherwise no one would be authorized to make changes or maintain the event properly.] |
 
+
+---
+
+## Contributions Week 7 - 10.05.2026 to 17.05.2026
+
+| **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
+| ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
+| **GabrielVuattoux** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **claudioo2** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **semirIbra** | [13.05.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/9880b1058b7280d94674fb9ce4a2124ae5471e93] | [The list on the event view that shows the partcipanst of an event, should for the user be visible until a certain number of partcipants and the rest should be visible by scrolling. This needs a side bar which allows to scroll and see the users. Furthermore, the user should be able to click on the participants to view their profile page.] | [This allows the event view to look clean, especially when there are coming more participants, so that the event view doesn't get extra long because of the list. Furthermore, users are able to discover more about participants by clicking on their names] |
+|                    | [16.05.2026]   | [https://github.com/claudioo2/sopra-fs26-group-21-client/commit/5543b3b23d35b60f5bd64d37f71932b3f284203a (or same commit not merged: https://github.com/claudioo2/sopra-fs26-group-21-client/commit/98bcfff54c130a12bc87ef101543d411752309e2)] | [Implementing the (un)follow functionality on the profile page when visiting other users. There exists a labled (un)follow button on the profile page of users but nothing happens when clicking on it. Furthermore, when the user is on its own profile page, it should be also possible to update the email and password.] | [Users may find other users through their profile page (and not only via the event view) and would like to follow these users. Additionally, someone would like also to change its password or email (next to the username and bio)] |
+
+
+---
+
+## Contributions Week 8 - 18.05.2026 to 22.05.2026
+
+| **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
+| ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
+| **GabrielVuattoux** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **claudioo2** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **semirIbra** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
