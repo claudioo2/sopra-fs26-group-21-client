@@ -21,6 +21,8 @@ const Login: React.FC = () => {
 
   useEffect(() => { router.prefetch("/map"); }, [router]);
 
+  useEffect(() => { apiService.get("/users").catch(() => {}); }, [apiService]);
+
   const handleLogin = async (values: FormFieldProps) => {
     try {
       const response = await apiService.post<User>("/users/login", values);
