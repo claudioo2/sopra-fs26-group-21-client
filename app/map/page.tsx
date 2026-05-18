@@ -1169,11 +1169,10 @@ export default function MapPage() {
     stompClientRef.current = null;
     setStompConnected(false);
 
-
+    const client = new Client({
       webSocketFactory: () => new SockJS(sockJsUrl),
-
-        reconnectDelay: 0,
-        connectionTimeout: 5000,
+      reconnectDelay: 0,
+      connectionTimeout: 5000,
         
       onConnect: () => {
         setStompConnected(true);
