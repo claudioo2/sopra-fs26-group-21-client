@@ -1,4 +1,4 @@
-"use client";
+§"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -290,7 +290,7 @@ export default function MapPage() {
 
   const eventsByIdRef = useRef<Map<number, EventDTO>>(new Map());
   const pulseAnimationRef = useRef<number | null>(null);
-  const ENABLE_CHAT_NOTIFICATIONS = true;
+  const ENABLE_CHAT_NOTIFICATIONS = false;
 
   const [eventsAtLocation, setEventsAtLocation] = useState<EventDTO[]>([]);
   const [locationEventsOpen, setLocationEventsOpen] = useState(false);
