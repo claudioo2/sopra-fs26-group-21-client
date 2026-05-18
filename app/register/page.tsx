@@ -23,7 +23,6 @@ const Register: React.FC = () => {
   const { set: setToken } = useLocalStorage<string>("token", "");
   const { set: setUserId } = useLocalStorage<string>("userId", "");
 
-  useEffect(() => { router.prefetch("/map"); }, [router]);
 
   const handleRegister = async (values: FormFieldProps) => {
     try {
