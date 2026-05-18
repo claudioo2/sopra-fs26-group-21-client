@@ -18,6 +18,8 @@ const Register: React.FC = () => {
   const router = useRouter();
   const apiService = useApi();
   const [form] = Form.useForm();
+
+  useEffect(() => { router.prefetch("/map"); }, [router]);
   const { set: setToken } = useLocalStorage<string>("token", "");
   const { set: setUserId } = useLocalStorage<string>("userId", "");
 
@@ -106,7 +108,7 @@ const Register: React.FC = () => {
               colorError: "#ef4444",
             },
           }}>
-            <Form form={form} name="register" size="large" onFinish={handleRegister} layout="vertical" requiredMark={false}>
+            <Form form={form} name="register" size="large" onFinish={handleRegister} layout="vertical">
               <Form.Item
                 name="username"
                 label="Username"
