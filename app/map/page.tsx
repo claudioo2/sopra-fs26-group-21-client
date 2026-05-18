@@ -1164,13 +1164,22 @@ export default function MapPage() {
 
     // Connect via STOMP over SockJS
     const sockJsUrl = getApiDomain().replace(/\/$/, "") + "/ws";
+    //close old before opening new
+    stompClientRef.current?.deactivate();
+    stompClientRef.current = null;
+    setStompConnected(false);
+
     const client = new Client({
       webSocketFactory: () => new SockJS(sockJsUrl),
+      reconnectDelay: 0,
+      connectionTimeout: 5000,
+        
       onConnect: () => {
         setStompConnected(true);
         client.subscribe(`/topic/chat/${event.id}`, (frame) => {
           const msg: Message = JSON.parse(frame.body);
-          setChatMessages((prev) => prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
+          setChatMessages((prev) => 
+            prev.some(m => m.id === msg.id) ? prev : [...prev, msg]);
         });
       },
       onDisconnect: () => {
@@ -1181,8 +1190,9 @@ export default function MapPage() {
         setStompConnected(false);
       },
     });
-    client.activate();
+    
     stompClientRef.current = client;
+    client.activate();
     setChatOpen(true);
   };
 
