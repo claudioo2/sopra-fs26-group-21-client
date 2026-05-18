@@ -213,7 +213,21 @@ export default function BoardPage() {
 
             {postType === "photo" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <Upload listType="picture-card" fileList={fileList} onChange={({ fileList }) => setFileList(fileList)} beforeUpload={() => false} maxCount={1}>
+                <Upload
+                  listType="picture-card"
+                  fileList={fileList}
+                  accept="image/jpeg,image/png"
+                  onChange={({ fileList }) => setFileList(fileList)}
+                  beforeUpload={(file) => {
+                    const allowed = file.type === "image/jpeg" || file.type === "image/png";
+                    if (!allowed) {
+                      messageApi.error("Only JPEG and PNG images are allowed.");
+                      return Upload.LIST_IGNORE;
+                    }
+                    return false;
+                  }}
+                  maxCount={1}
+                >
                   {fileList.length === 0 && <div><UploadOutlined /><div style={{ marginTop: 8 }}>Upload</div></div>}
                 </Upload>
                 <Input.TextArea rows={3} placeholder="Add a comment..." value={comment} onChange={e => setComment(e.target.value)} style={{ backgroundColor: "#23262d", borderColor: "#2e3138", color: "#fff" }} />
