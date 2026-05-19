@@ -209,11 +209,11 @@ const Profile: React.FC = () => {
       );
 
       const eventId = selectedEvent.id;
+      const cancelledAt = new Date().toISOString();
 
-      setSelectedEvent(null);
-
-      setEvents((prev) => prev.filter((e) => e.id !== eventId));
-      messageApi.success("Event deleted.");
+      setEvents((prev) => prev.map((e) => e.id === eventId ? { ...e, cancelledAt } : e));
+      setSelectedEvent((prev) => prev ? { ...prev, cancelledAt } : null);
+      messageApi.success("Event cancelled.");
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Failed to delete event";
       messageApi.error(msg);
@@ -385,50 +385,77 @@ const Profile: React.FC = () => {
           </div>
 
           {/* Events section */}
-          <div style={{ marginBottom: 24 }}>
-            <p style={{ color: "#9ca3af", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px 0" }}>
-              Events · {events.length}
-            </p>
-            {events.length === 0 ? (
-              <p style={{ color: "#4b5563", fontSize: 14, textAlign: "center", marginTop: 20 }}>No events joined yet.</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {events.map((event) => {
-                  const catColor = event.category ? CATEGORY_COLORS[event.category] : "#94a3b8";
-                  return (
-                    <div
-                      key={event.id}
-                      onClick={() => setSelectedEvent(event)}
-                      style={{ backgroundColor: "#16181D", borderRadius: 14, padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: "1px solid #2e3138", transition: "border-color 0.15s" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.borderColor = catColor + "66")}
-                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#2e3138")}
-                    >
-                      <div style={{ width: 38, height: 38, borderRadius: "50%", backgroundColor: catColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        {event.category && (
-                          <svg viewBox="0 0 24 24" width="18" height="18" dangerouslySetInnerHTML={{ __html: CATEGORY_ICONS[event.category] }} />
-                        )}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, color: "#fff", fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {event.title}
-                        </p>
-                        <p style={{ margin: "2px 0 0 0", color: "#6b7280", fontSize: 12 }}>
-                          {new Date(event.startTime).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}
-                          {event.category && <span style={{ color: catColor, marginLeft: 6, fontWeight: 500 }}>{CATEGORY_LABELS[event.category]}</span>}
-                        </p>
-                      </div>
-                      {event.cancelledAt && (
-                        <span style={{ fontSize: 10, color: "#ef4444", backgroundColor: "#2d1515", padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>Cancelled</span>
-                      )}
-                      {event.isPrivate && !event.cancelledAt && (
-                        <span style={{ fontSize: 10, color: "#6b7280", backgroundColor: "#23262d", padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>Private</span>
-                      )}
+          {(() => {
+            const now = new Date();
+            const upcomingEvents = events.filter(e => !e.cancelledAt && new Date(e.endTime) >= now);
+            const pastEvents = events.filter(e => e.cancelledAt || new Date(e.endTime) < now);
+
+            const renderEventCard = (event: EventDTO) => {
+              const catColor = event.category ? CATEGORY_COLORS[event.category] : "#94a3b8";
+              const isPast = !event.cancelledAt && new Date(event.endTime) < now;
+              return (
+                <div
+                  key={event.id}
+                  onClick={() => setSelectedEvent(event)}
+                  style={{ backgroundColor: "#16181D", borderRadius: 14, padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: "1px solid #2e3138", transition: "border-color 0.15s", opacity: isPast || event.cancelledAt ? 0.6 : 1 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = catColor + "66")}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#2e3138")}
+                >
+                  <div style={{ width: 38, height: 38, borderRadius: "50%", backgroundColor: catColor, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {event.category && (
+                      <svg viewBox="0 0 24 24" width="18" height="18" dangerouslySetInnerHTML={{ __html: CATEGORY_ICONS[event.category] }} />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, color: "#fff", fontWeight: 600, fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {event.title}
+                    </p>
+                    <p style={{ margin: "2px 0 0 0", color: "#6b7280", fontSize: 12 }}>
+                      {new Date(event.startTime).toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" })}
+                      {event.category && <span style={{ color: catColor, marginLeft: 6, fontWeight: 500 }}>{CATEGORY_LABELS[event.category]}</span>}
+                    </p>
+                  </div>
+                  {event.cancelledAt && (
+                    <span style={{ fontSize: 10, color: "#ef4444", backgroundColor: "#2d1515", padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>Cancelled</span>
+                  )}
+                  {isPast && (
+                    <span style={{ fontSize: 10, color: "#6b7280", backgroundColor: "#23262d", padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>Ended</span>
+                  )}
+                  {event.isPrivate && !event.cancelledAt && !isPast && (
+                    <span style={{ fontSize: 10, color: "#6b7280", backgroundColor: "#23262d", padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>Private</span>
+                  )}
+                </div>
+              );
+            };
+
+            return (
+              <>
+                <div style={{ marginBottom: 24 }}>
+                  <p style={{ color: "#9ca3af", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px 0" }}>
+                    Events · {upcomingEvents.length}
+                  </p>
+                  {upcomingEvents.length === 0 ? (
+                    <p style={{ color: "#4b5563", fontSize: 14, textAlign: "center", marginTop: 20 }}>No upcoming events.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {upcomingEvents.map(renderEventCard)}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                  )}
+                </div>
+
+                {pastEvents.length > 0 && (
+                  <div style={{ marginBottom: 24 }}>
+                    <p style={{ color: "#9ca3af", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 1, margin: "0 0 12px 0" }}>
+                      Past Events · {pastEvents.length}
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {pastEvents.map(renderEventCard)}
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
 
         </div>
       </div>{/* end scrollable */}
@@ -580,7 +607,7 @@ const Profile: React.FC = () => {
                   >
                     View Board
                   </button>
-                  {isCreator && (
+                  {isCreator && !selectedEvent.cancelledAt && (
                     <button
                       onClick={() => handleDeleteEvent(selectedEvent)}
                       style={{ width: "100%", height: 44, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#f87171", fontWeight: 500, fontSize: 14, cursor: "pointer" }}
