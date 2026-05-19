@@ -143,8 +143,8 @@ reason).
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
-| **GabrielVuattoux** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
-|                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
+| **GabrielVuattoux** | 15.05.2026   | https://github.com/claudioo2/sopra-fs26-group-21-server/commit/f39a134b0163f18375ee27953d586a9fda91a587 | migrate from H2 in-memory to Cloud SQL Postgres | We had a lot of troubles with the deployed version, we implemented a DB to reduce these troubles |
+|                    | 15.05.2026   | 10220db , abd08cd , 38fe3b3 | bugs fixing for the DB and the differents bugs we still had | the app was not working anymore, every 2 minutes the users were logged out |
 | **fra-a11y** | 17.05.2026 | server: https://github.com/claudioo2/sopra-fs26-group-21-server/commit/bd22078 client: https://github.com/claudioo2/sopra-fs26-group-21-client/commit/27987fe | Implemented soft-delete for events: cancelled events are kept in the database with the chat accessible for 24h; the profile page displays a "cancelled" badge on the event card (#65) | Cancelling an event should not immediately cut participants off from the chat — the grace period lets them coordinate. The badge on the profile page keeps participants informed without removing the event from their view |
 |                    | 17.05.2026 | server: https://github.com/claudioo2/sopra-fs26-group-21-server/commit/6287845 | When a creator cancels an event, all participants are instantly notified via WebSocket without needing to refresh (#64) | Real-time notification is essential so participants are not left waiting in a chat for an event that no longer exists; this keeps the UX consistent with the rest of the real-time messaging system |
 |                    | 14.05.2026 | https://github.com/claudioo2/sopra-fs26-group-21-client/commit/d38a5ab | Redesigned the entire UI with a consistent dark theme applied across all pages (#51) | Inconsistent styling was creating a disjointed user experience; a unified dark theme improves visual coherence and matches the Spontaneo branding throughout the app |
@@ -163,7 +163,7 @@ reason).
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
-| **GabrielVuattoux** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+| **GabrielVuattoux** | 19.05.2025   | https://github.com/claudioo2/sopra-fs26-group-21-server/commit/e4ac0ce8e38f7dc82c9542ae76c92166d29148e0 | Modification of the readme files | we have to do it for M4 |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
