@@ -1386,7 +1386,7 @@ export default function MapPage() {
       .minute(values.endTime.minute())
       .second(0);
 
-    if (startDayjs.isBefore(dayjs())) {
+    if (startDayjs.isBefore(new Date())) {
       messageApi.error("Start time cannot be in the past.");
       return;
     }
@@ -2083,7 +2083,7 @@ export default function MapPage() {
 
                   <div style={{ display: "flex", gap: 8 }}>
                     <Form.Item label="Start Date" name="startDate" rules={[{ required: true, message: "Required" }]} style={{ flex: 1 }}>
-                      <DatePicker style={{ width: "100%" }} disabledDate={(current) => current && current.isBefore(dayjs().startOf("day"))} />
+                      <DatePicker style={{ width: "100%" }} disabledDate={(current) => current && current.isBefore(new Date(), "day")} />
                     </Form.Item>
                     <Form.Item label="Start Time" name="startTime" rules={[{ required: true, message: "Required" }]} style={{ flex: 1 }}>
                       <TimePicker style={{ width: "100%" }} format="HH:mm" />
@@ -2092,7 +2092,7 @@ export default function MapPage() {
 
                   <div style={{ display: "flex", gap: 8 }}>
                     <Form.Item label="End Date" name="endDate" rules={[{ required: true, message: "Required" }]} style={{ flex: 1 }}>
-                      <DatePicker style={{ width: "100%" }} disabledDate={(current) => current && current.isBefore(dayjs().startOf("day"))} />
+                      <DatePicker style={{ width: "100%" }} disabledDate={(current) => current && current.isBefore(new Date(), "day")} />
                     </Form.Item>
                     <Form.Item label="End Time" name="endTime" rules={[{ required: true, message: "Required" }]} style={{ flex: 1 }}>
                       <TimePicker style={{ width: "100%" }} format="HH:mm" />
