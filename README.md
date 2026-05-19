@@ -1,71 +1,213 @@
 # SoPra FS26 – Group 21 · Frontend
 
-Next.js 15 / TypeScript client for the SoPra FS26 Group 21 project.
-Deployed on **Vercel** · The app runs on `http://localhost:3000` in development and connects to the Spring Boot backend at `http://localhost:8080`.
+## Introduction
+
+Group 21 is building a **location-based event discovery app**: users open a map, see what's happening nearby right now, and join — public events with one click, private ones with an 8-character invite code shared by the organizer. Each event has its own chat (real-time STOMP/SockJS) and a shared "board" where participants drop photos, comments, and emoji. After it ends, attendees rate the organizer.
+
+The motivation is to bridge the gap between social-network "events" (which assume you already know the host) and event-listing platforms (which feel impersonal): everything is anchored to a map, surfaced by proximity, and tied to a lightweight follow graph so you can also filter to events your friends are joining.
+
+This repository contains the **Next.js / TypeScript frontend** deployed on **Vercel**. The Spring Boot backend lives in [`sopra-fs26-group-21-server`](https://github.com/claudioo2/sopra-fs26-group-21-server).
 
 ---
 
-## Prerequisites
+## Technologies used
 
-- **macOS / Linux / WSL** — ensure `git` and `curl` are available.
-- **Windows** — WSL 2 (Ubuntu) is required. Install it by running the provided [`windows.ps1`](./windows.ps1) script in an elevated PowerShell terminal:
+- **Next.js 15** (App Router, Turbopack) · **TypeScript** · **React 19**
+- **Ant Design 6** for UI primitives
+- **Mapbox GL JS** for the map, with **`supercluster`** for marker clustering
+- **`@stomp/stompjs` + `sockjs-client`** for the WebSocket-backed event chat
+- **Deno / Nix** (via `flake.nix`) to pin the dev toolchain reproducibly
+- **Vercel** for deployment · **GitHub Actions** for CI
+
+---
+
+## High-level components
+
+1. **[`app/map/page.tsx`](./app/map/page.tsx) — The Map.** The central screen of the app. Initialises a Mapbox map, fetches `/events?lat&lng&radius=20` on every `moveend`, renders donut-shaped cluster markers (petals proportional to category count), supports spiderfy expansion for tightly-packed events, and hosts the create-event panel + event-detail modal. Filter state (categories, friends-only, my-events, past-events) is persisted in `sessionStorage`.
+
+2. **[`app/api/apiService.ts`](./app/api/apiService.ts) — REST client.** Thin singleton around `fetch` that switches between `http://localhost:8080` (dev) and the App Engine URL (prod) via [`app/utils/domain.ts`](./app/utils/domain.ts). Used by every page through the [`useApi`](./app/hooks/useApi.tsx) hook. Auth tokens are passed as `Authorization: Bearer <token>` (read from `localStorage` via [`useLocalStorage`](./app/hooks/useLocalStorage.tsx)).
+
+3. **STOMP-over-SockJS chat client** — instantiated inline in [`app/map/page.tsx`](./app/map/page.tsx) when a participant opens an event's chat panel. Subscribes to `/topic/chat/{eventId}` and publishes to `/app/chat/{eventId}`. SockJS (not raw WebSocket) is required because App Engine Standard's front-end proxy blocks WebSocket upgrades.
+
+4. **[`app/users/[id]/page.tsx`](./app/users/[id]/page.tsx) — Profile.** Combines user info, the follow / unfollow toggle, the View Following / View Followers modals, the join-by-invite-code form, and the upcoming-events list (with a red "Cancelled" badge for soft-deleted events still in their 24 h chat grace period). On the owner's own profile it also edits `username`, `email`, `password`, and `bio`.
+
+5. **[`app/events/[id]/board/page.tsx`](./app/events/[id]/board/page.tsx) — Event Board.** Per-event timeline of `PHOTO` / `COMMENT` / `EMOJI` posts (photo uploads restricted to JPEG/PNG). Only event participants can view or post.
+
+The Map talks to the REST client to fetch events, the REST client hits the backend, and the STOMP client takes over for real-time messaging once a chat is opened. Profile and Board are entered from the Map (event detail modal) or from the user table at `/users`.
+
+---
+
+## Launch & Deployment
+
+### Prerequisites
+
+- **macOS / Linux / WSL** — `git` and `curl` must be available.
+- **Windows** — WSL 2 (Ubuntu) is required. Run the provided [`windows.ps1`](./windows.ps1) in an elevated PowerShell:
   ```powershell
   C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\windows.ps1
   ```
-  After installation, keep the repository inside the WSL filesystem (not the Windows drive) to avoid severe I/O performance degradation.
+  Keep the repo inside the WSL filesystem (not on the Windows drive) to avoid I/O slowdowns.
 
----
-
-## Installation
+### Install
 
 ```bash
 git clone https://github.com/claudioo2/sopra-fs26-group-21-client
 cd sopra-fs26-group-21-client
-source setup.sh   # installs Nix, direnv, Node, and Deno
+source setup.sh   # installs Nix, direnv, Node, and Deno reproducibly via flake.nix
 ```
 
-The setup script takes a few minutes. If it fails, re-run it in a fresh terminal. See the [manual troubleshooting steps](#troubleshooting) below if the issue persists.
+If `setup.sh` fails, follow the [manual troubleshooting steps](#troubleshooting) at the bottom of this file.
 
----
+### Environment
 
-## Development
+Create `.env.local` in the repository root:
+
+```
+NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=<your mapbox public token>
+NEXT_PUBLIC_PROD_API_URL=<production backend URL>   # only needed for production builds
+```
+
+Without `NEXT_PUBLIC_PROD_API_URL`, [`app/utils/domain.ts`](./app/utils/domain.ts) always targets `http://localhost:8080`.
+
+### Run
 
 ```bash
-npm run dev       # start dev server at http://localhost:3000 (Turbopack, hot reload)
+npm run dev       # dev server at http://localhost:3000 (Turbopack, hot reload)
 npm run build     # production build
 npm run lint      # ESLint
-npm run fmt       # format with Deno formatter
+npm run fmt       # format with the Deno formatter
 ```
 
-All commands are also available via the Deno runtime (`deno task dev`, `deno task build`, etc.).
+Every command is also available via Deno (`deno task dev`, etc.).
 
-**Environment:** create `.env.local` and set `NEXT_PUBLIC_PROD_API_URL` to point to the production backend URL. Without this variable, the app always targets `http://localhost:8080`.
+### External dependencies
 
----
+- The **Spring Boot backend** must be running on `http://localhost:8080` (see [`sopra-fs26-group-21-server`](https://github.com/claudioo2/sopra-fs26-group-21-server)).
+- A **Mapbox** account (free tier is enough) for the public access token.
 
-## Docker
+### Tests
 
-Push to `main` automatically builds and pushes a Docker image to Docker Hub via GitHub Actions.
+The client has **no automated test suite** at this time — testing is done by running the dev server and exercising the UI. End-to-end tests are on the roadmap below.
 
-**One-time setup** (one team member):
-1. Create a [Docker Hub](https://hub.docker.com/) account (include the group number in the username, e.g. `sopra_group_21`).
-2. Create a repository on Docker Hub with the same name as the GitHub repository.
-3. Add the following [repository secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository):
-   - `dockerhub_username`
-   - `dockerhub_password` — a Docker Hub [personal access token](https://docs.docker.com/docker-hub/access-tokens/) with read/write access
-   - `dockerhub_repo_name`
+### Docker (optional)
 
-**Run locally:**
+Push to `main` automatically builds and pushes a Docker image to Docker Hub via GitHub Actions. To run it locally:
+
 ```bash
 docker pull <dockerhub_username>/<dockerhub_repo_name>
 docker run -p 3000:3000 <dockerhub_username>/<dockerhub_repo_name>
 ```
 
+One-time setup (one team member): create a Docker Hub account whose username contains the group number (e.g. `sopra_group_21`), create a matching Docker Hub repository, and add the GitHub secrets `dockerhub_username`, `dockerhub_password` (a Docker Hub access token with read/write), and `dockerhub_repo_name`.
+
+### Releases
+
+Push to `main` → GitHub Actions runs [`.github/workflows/verceldeployment.yml`](./.github/workflows/verceldeployment.yml), which deploys the build to Vercel. There is no separate tagging step; the `main` branch is the production line.
+
 ---
 
-## Adding Dev Tools via Nix
+## Illustrations
 
-This project uses [Determinate Nix](https://github.com/DeterminateSystems/nix-installer) to manage the development environment. To add a package, edit [`flake.nix`](./flake.nix):
+The client has four main user flows. They are entered after the initial login / register screens.
+
+### 1. Map exploration → join an event
+
+```
+/login  →  /map
+          ├─ donut clusters group nearby events by category
+          ├─ click a cluster → zoom in or spiderfy
+          ├─ click a pin → event detail modal
+          └─ modal: "Join" button (public) or invite-code prompt (private)
+```
+
+The map opens immediately on Zurich while geolocation resolves in the background, then `flyTo`s the user's position once `navigator.geolocation` succeeds (3-second timeout). Filter toggles (category, Friends-Only, My Events, Past Events) persist in `sessionStorage` so a refresh does not reset the view.
+
+### 2. Create an event
+
+```
+/map  →  right-side "Create event" panel
+          ├─ Mapbox Geocoding search (500 ms debounce) for the address
+          ├─ green pin overlay = submitted coordinates
+          └─ POST /events  →  new pin appears for everyone on next moveend
+```
+
+The creator is auto-added as the first participant, and the server generates a unique 8-character invite code visible only to them.
+
+### 3. Real-time chat
+
+```
+event modal  →  "Open chat"
+                ├─ REST: GET /events/{id}/messages  (history)
+                ├─ STOMP/SockJS connect on /ws
+                ├─ subscribe /topic/chat/{eventId}
+                └─ publish /app/chat/{eventId}  (token in body)
+```
+
+The chat survives a soft-delete: when the organizer cancels an event the row is kept for **24 hours** so participants can still coordinate. After that the cleanup job hard-deletes the event.
+
+### 4. Profile, follow, rate
+
+```
+/users/[id]
+  ├─ Follow / Unfollow toggle (other users)
+  ├─ View Following / View Followers modals
+  ├─ Join by invite code
+  ├─ Upcoming events list (cancelled events get a red badge)
+  └─ Rate the organizer (visible only after the event ends)
+```
+
+Ratings are 1–5 stars, one per (user, event) — the DB enforces a `UNIQUE(rater_id, event_id)` constraint and a second submission returns `409`.
+
+*Screenshots: see the live deployment on Vercel.*
+
+---
+
+## Roadmap
+
+The top features new contributors could pick up next:
+
+1. **End-to-end test suite (Playwright).** The client currently has no automated tests. A Playwright suite covering the four flows above (login → map, create-event, chat round-trip, rate-after-end) would dramatically improve regression safety.
+2. **In-app cancellation notifications.** The backend already broadcasts `/topic/events/{eventId}/cancelled` when an organizer deletes an event, but the client does not subscribe yet — it only sees the cancellation on the next `moveend` fetch. Subscribing on the map (and on the profile page) would give participants an instant toast + automatic UI refresh.
+3. **Search / autocomplete on the map.** Today users navigate by panning; an address search box that pans the map to a given location (re-using the existing Mapbox Geocoding call from the create-event panel) would make discovery much faster.
+
+---
+
+## Authors and acknowledgment
+
+Group 21, FS26, University of Zurich — SoPra (Software Engineering Lab):
+
+- **[@claudioo2](https://github.com/claudioo2)**
+- **[@GabrielVuattoux](https://github.com/GabrielVuattoux)**
+- **[@fra-a11y](https://github.com/fra-a11y)**
+- **[@Pascal-Trautmann](https://github.com/Pascal-Trautmann)**
+- **[@semirIbra](https://github.com/semirIbra)**
+
+Many thanks to the SoPra teaching team and our TA for guidance throughout the semester. The project bootstrap is based on the official [`sopra-fs26-template-client`](https://github.com/HASEL-UZH/sopra-fs26-template-client) from the HASEL group at UZH.
+
+---
+
+## License
+
+Licensed under the **Apache License 2.0** — see the [`LICENSE`](../sopra-fs26-group-21-server/LICENSE) file in the server repository for the full text.
+
+---
+
+## Troubleshooting
+
+If `source setup.sh` fails repeatedly, run the following in a fresh terminal:
+
+```bash
+curl --proto '=https' --tlsv1.2 -ssf --progress-bar -L https://install.determinate.systems/nix -o install-nix.sh
+sh install-nix.sh install --determinate --no-confirm --verbose
+nix profile install nixpkgs#direnv
+direnv allow
+```
+
+If `direnv` is not recognised after install, hook it into your shell following the [official guide](https://github.com/direnv/direnv/blob/master/docs/hook.md).
+
+### Adding dev tools via Nix
+
+Edit [`flake.nix`](./flake.nix):
 
 1. Add the package to `nativeBuildInputs`:
    ```nix
@@ -75,24 +217,6 @@ This project uses [Determinate Nix](https://github.com/DeterminateSystems/nix-in
    ```nix
    export PATH="${pkgs.<new-package>}/bin:$PATH"
    ```
-3. Apply the changes:
-   ```bash
-   direnv reload
-   ```
+3. Apply: `direnv reload`.
 
-To pin a specific package version, use the `overlays` section in `flake.nix`.
-
----
-
-## Troubleshooting
-
-If `source setup.sh` fails repeatedly, run the following steps manually in a fresh terminal:
-
-```bash
-curl --proto '=https' --tlsv1.2 -ssf --progress-bar -L https://install.determinate.systems/nix -o install-nix.sh
-sh install-nix.sh install --determinate --no-confirm --verbose
-nix profile install nixpkgs#direnv
-direnv allow
-```
-
-Hook `direnv` into your shell following the [official guide](https://github.com/direnv/direnv/blob/master/docs/hook.md) if `direnv` is not recognized after installation.
+Pin a specific version via the `overlays` section.
