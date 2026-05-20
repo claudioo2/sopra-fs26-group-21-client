@@ -110,7 +110,8 @@ export default function BoardPage() {
   }
 
   const fmt = (d: string) => {
-    const dt = new Date(d);
+    const utc = d.endsWith("Z") || d.includes("+") ? d : d + "Z";
+    const dt = new Date(utc);
     return `${dt.getDate()}.${dt.getMonth() + 1}.${dt.getFullYear()} · ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`;
   };
 
