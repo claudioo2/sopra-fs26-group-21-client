@@ -248,7 +248,6 @@ const Profile: React.FC = () => {
   };
 
   const handleJoinEvent = async () => {
-    console.log("Updated n: " + events[0].isParticipant);
       if (!selectedEvent) return;
       setJoiningEvent(true);
       try {
@@ -259,6 +258,7 @@ const Profile: React.FC = () => {
         );
         
         setSelectedEvent({ ...updated, isParticipant: true });
+        setEvents((prev) => prev.map((e) => e.id === updated.id ? { ...updated, isParticipant: true } : e));
         messageApi.success("You joined the event!");
       } catch (error) {
         const msg = error instanceof Error ? error.message : "Failed to join event";
