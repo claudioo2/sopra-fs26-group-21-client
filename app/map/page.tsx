@@ -1258,7 +1258,7 @@ export default function MapPage() {
     setSavingEdit(true);
 
     try {
-      const updated = await apiService.put<EventDTO>(
+      await apiService.put<EventDTO>(
         `/events/${selectedEvent.id}`,
         {
           [field]: value,
@@ -1266,9 +1266,9 @@ export default function MapPage() {
         { Authorization: `Bearer ${token}` }
       );
 
-      setSelectedEvent((prev) =>
-        prev ? { ...prev, ...updated } : prev
-      );
+      const updated = { ...selectedEvent, [field]: value };
+      setSelectedEvent(updated);
+      mapInstanceRef.current?.fire("moveend");
 
       setEditingField(null);
       setEditValue("");
@@ -2189,8 +2189,8 @@ export default function MapPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
                     <Input.TextArea autoFocus rows={3} value={editValue} onChange={(e) => setEditValue(e.target.value)} />
                     <div style={{ display: "flex", gap: 8 }}>
-                      <Button type="primary" loading={savingEdit} onClick={() => handleUpdateField("description", editValue)}>Save</Button>
-                      <Button onClick={() => setEditingField(null)}>Cancel</Button>
+                      <Button style={{ width: 100, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }} loading={savingEdit} onClick={() => handleUpdateField("description", editValue)}>Save</Button>
+                      <Button style={{ width: 100, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#f87171", fontWeight: 500, fontSize: 14, cursor: "pointer" }} onClick={() => setEditingField(null)}>Cancel</Button>
                     </div>
                   </div>
                 ) : (
@@ -2220,7 +2220,7 @@ export default function MapPage() {
               {participantUsers.length > 0 && (
                 <div style={card}>
                   <span style={label}>Participants ({participantUsers.length})</span>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                  <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px", maxHeight: "190px", overflowY: "auto", paddingRight: "15px" }}>
                     {participantUsers.map((p) => {
                       const isMe = Number(p.id) === Number(userId);
                       const isFollowing = followedUsers.some((u) => Number(u.id) === Number(p.id));
@@ -2268,7 +2268,7 @@ export default function MapPage() {
                     </p>
                   </div>
                   <button
-                    onClick={() => navigator.clipboard.writeText(selectedEvent.inviteCode ?? "")}
+                    onClick={() => {navigator.clipboard.writeText(selectedEvent.inviteCode ?? ""); messageApi.success("Invite code copied");}}
                     style={{
                       background: "none",
                       border: "none",
