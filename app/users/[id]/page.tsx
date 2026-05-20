@@ -8,6 +8,7 @@ import { User } from "@/types/user";
 import { EventDTO, EventCategory } from "@/types/event";
 import { App, ConfigProvider, Form, Input, Rate } from "antd";
 import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, KeyOutlined, CompassOutlined, UserOutlined } from "@ant-design/icons";
+import { profile } from "console";
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   SPORTS: "Sports", MUSIC: "Music", FOOD: "Food", ART: "Art",
@@ -272,8 +273,12 @@ const Profile: React.FC = () => {
     setLeavingEvent(true);
     try {
       await apiService.delete(`/events/${event.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
-      setEvents((prev) => prev.filter((e) => e.id !== event.id));
+      if (Number(userId) === Number(profileId)) {
+        setEvents((prev) => prev.filter((e) => e.id !== event.id));
+      }
       setSelectedEvent(null);
+      const updated = { ...event, isParticipant: false, participantIds: event.participantIds ? event.participantIds.filter(p => Number(p) !== Number(userId)) : null };
+      setEvents((prev) => prev.map((e) => e.id === event.id ? updated : e));
       messageApi.success("You left the event.");
     } catch (error) {
       messageApi.error(error instanceof Error ? error.message : "Failed to leave event");
