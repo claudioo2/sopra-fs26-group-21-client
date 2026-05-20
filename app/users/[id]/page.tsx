@@ -56,6 +56,7 @@ const Profile: React.FC = () => {
   const [loadingFollowers, setLoadingFollowers] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joiningByCode, setJoiningByCode] = useState(false);
+  const [joiningEvent, setJoiningEvent] = useState(false);
   const [leavingEvent, setLeavingEvent] = useState(false);
   const { message: messageApi } = App.useApp();
 
@@ -241,6 +242,31 @@ const Profile: React.FC = () => {
       setJoiningByCode(false);
     }
   };
+
+  const isUserParticipant = (event: EventDTO) => {
+    return event.participantIds?.some(p => String(p) === String(userId));
+  };
+
+  const handleJoinEvent = async () => {
+    console.log("Updated n: " + events[0].isParticipant);
+      if (!selectedEvent) return;
+      setJoiningEvent(true);
+      try {
+        const updated = await apiService.post<EventDTO>(
+          `/events/${selectedEvent.id}/participants`,
+          { userId: Number(userId) },
+          { Authorization: `Bearer ${token}` }
+        );
+        
+        setSelectedEvent({ ...updated, isParticipant: true });
+        messageApi.success("You joined the event!");
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Failed to join event";
+        messageApi.error(msg);
+      } finally {
+        setJoiningEvent(false);
+      }
+    };
 
   const handleLeaveEvent = async (event: EventDTO) => {
     setLeavingEvent(true);
@@ -584,6 +610,13 @@ const Profile: React.FC = () => {
 
                 {/* Buttons */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+                {!isCreator && !isUserParticipant(selectedEvent) && (
+                  <button onClick={handleJoinEvent} disabled={joiningEvent}
+                    style={{ width: "100%", height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                    {joiningEvent ? "Joining…" : "Join Event"}
+                  </button>
+                )}
+                {(selectedEvent.isParticipant || isCreator || isUserParticipant(selectedEvent)) && (
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       onClick={() => router.push(`/map?openChat=${selectedEvent.id}`)}
@@ -601,6 +634,7 @@ const Profile: React.FC = () => {
                       </button>
                     )}
                   </div>
+                  )}
                   <button
                     onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}
                     style={{ width: "100%", height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f3f4f6", fontWeight: 500, fontSize: 14, cursor: "pointer" }}
