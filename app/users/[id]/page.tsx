@@ -6,7 +6,7 @@ import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import { User } from "@/types/user";
 import { EventDTO, EventCategory } from "@/types/event";
-import { App, Form, Input } from "antd";
+import { App, ConfigProvider, Form, Input, Rate } from "antd";
 import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, KeyOutlined, CompassOutlined, UserOutlined } from "@ant-design/icons";
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
@@ -348,6 +348,17 @@ const Profile: React.FC = () => {
               </button>
             )}
           </div>
+
+          {user?.ratingCount != null && user.ratingCount > 0 && (
+            <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 16 }}>
+              <ConfigProvider theme={{ components: { Rate: { starColor: "#fbbf24", starBg: "#4b5563" } } }}>
+                <Rate disabled allowHalf value={user.averageRating ?? 0} style={{ fontSize: 16 }} />
+              </ConfigProvider>
+              <span style={{ color: "#9ca3af", fontSize: 12, fontWeight: 500 }}>
+                {user.ratingCount} review{user.ratingCount === 1 ? "" : "s"}
+              </span>
+            </div>
+          )}
 
           {/* Bio / edit form */}
           <p style={{

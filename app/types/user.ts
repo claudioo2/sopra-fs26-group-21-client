@@ -7,6 +7,8 @@ export interface User {
   status: string | null;
   bio: string | null;
   following: User[] | null;
+  averageRating?: number | null;
+  ratingCount?: number | null;
 }
 
 export interface UserPreview {
