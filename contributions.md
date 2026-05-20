@@ -169,7 +169,7 @@ reason).
 |                    | 19.05.2026 | https://github.com/claudioo2/sopra-fs26-group-21-client/commit/b3cfd94 | Added animated loading overlay on login: shows the app logo, floating category-coloured markers and a "server is starting up" hint after 4 s, improving the cold-start UX (#41) | The server cold start takes some time; without feedback users assumed the app was broken. The overlay reassures them and matches the app's visual identity. |
 | **claudioo2** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
-| **Pascal-Trautmann** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+| **Pascal-Trautmann** | 20.05.2026   | https://github.com/claudioo2/sopra-fs26-group-21-client/commit/356a62d23638e2c88cc4b0fb3f39a54a19fb1c5b | I added the frontend/Client part for the ratings so the average ratings of a user are visible in their profile. | This is relevant becuase we already had everything working for the ratings, but of course it would be great to see the average ratings for a user, because this is helpful to determine the quality of the users events |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **semirIbra** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
