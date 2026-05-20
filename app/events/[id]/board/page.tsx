@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { App, Button, Input, Upload } from "antd";
-import { ArrowLeftOutlined, PlusOutlined, PictureOutlined, CommentOutlined, SmileOutlined, UploadOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, PlusOutlined, PictureOutlined, CommentOutlined, SmileOutlined, UploadOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useApi } from "@/hooks/useApi";
 import useLocalStorage from "@/hooks/useLocalStorage";
 import type { UploadFile } from "antd/es/upload/interface";
@@ -16,6 +16,7 @@ interface PostGetDTO {
   content: string | null;
   imageUrl: string | null;
   emoji: string | null;
+  authorId: number;
   authorUsername: string;
   eventId: number;
   timestamp: string;
@@ -83,6 +84,15 @@ export default function BoardPage() {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  }
+
+  async function handleDelete(postId: number) {
+    try {
+      await apiService.delete(`/events/${eventId}/posts/${postId}`, { Authorization: `Bearer ${token}` });
+      setPosts((prev) => prev.filter((p) => p.id !== postId));
+    } catch {
+      messageApi.error("Failed to delete post. Try again.");
+    }
   }
 
   async function handleSubmit() {
@@ -158,7 +168,18 @@ export default function BoardPage() {
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span style={{ fontWeight: 600, color: "#fff", fontSize: 13 }}>{post.authorUsername}</span>
-              <span style={{ color: "#6b7280", fontSize: 11 }}>{fmt(post.timestamp)}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ color: "#6b7280", fontSize: 11 }}>{fmt(post.timestamp)}</span>
+                {canPost && post.authorId === Number(userId) && (
+                  <button
+                    onClick={() => handleDelete(post.id)}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 13, padding: 0, display: "flex", alignItems: "center" }}
+                    title="Delete post"
+                  >
+                    <DeleteOutlined />
+                  </button>
+                )}
+              </div>
             </div>
             {post.postType === "PHOTO" && post.imageUrl && (
               <img src={post.imageUrl} alt="post" style={{ width: "100%", borderRadius: 10, marginBottom: post.content ? 8 : 0 }} />
