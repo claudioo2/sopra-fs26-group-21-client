@@ -127,6 +127,7 @@ export default function HomePage() {
           >
             <button
               onClick={() => router.push("/login")}
+              className="hover-button"
               style={{
                 height: 58,
                 padding: "0 28px",
@@ -202,6 +203,7 @@ export default function HomePage() {
             >
               <button
                 onClick={() => router.push("/register")}
+                className="hover-button"
                 style={{
                   height: 58,
                   padding: "0 30px",

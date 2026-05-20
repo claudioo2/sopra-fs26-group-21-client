@@ -259,7 +259,7 @@ const Register: React.FC = () => {
                 <Input.Password placeholder="Confirm password" disabled={loading} />
               </Form.Item>
               <Form.Item style={{ marginBottom: 0 }}>
-                <Button type="primary" htmlType="submit" block loading={loading} style={{ height: 44, fontWeight: 600, fontSize: 15 }}>
+                <Button type="primary" className="hover-button" htmlType="submit" block loading={loading} style={{ height: 44, fontWeight: 600, fontSize: 15 }}>
                   {loading ? "Creating account…" : "Register"}
                 </Button>
               </Form.Item>
@@ -270,6 +270,7 @@ const Register: React.FC = () => {
             <span style={{ color: "#6b7280", fontSize: 14 }}>{"Already have an account? "}</span>
             <span
               onClick={() => router.push("/login")}
+              className="hover-button"
               style={{ color: "#3897f0", fontSize: 14, cursor: "pointer", fontWeight: 500 }}
             >
               Login here

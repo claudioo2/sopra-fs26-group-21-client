@@ -302,6 +302,7 @@ const Profile: React.FC = () => {
         <div style={{ width: "100%", maxWidth: 480, display: "flex", alignItems: "center", padding: "16px 0", gap: 12 }}>
           <button
             onClick={() => router.push("/map")}
+            className="hover-button"
             style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
           >
             <ArrowLeftOutlined />
@@ -310,16 +311,16 @@ const Profile: React.FC = () => {
             <span style={{ color: "#fff", fontWeight: 700, fontSize: 17 }}>{user?.username ?? "Profile"}</span>
           </div>
           {isOwnProfile && !editing && (
-            <button onClick={handleEdit} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <button onClick={handleEdit} className="hover-button" style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#fff", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <EditOutlined />
             </button>
           )}
           {editing && (
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setEditing(false)} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#aaa", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <button onClick={() => setEditing(false)} className="hover-button" style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#aaa", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <CloseOutlined />
               </button>
-              <button onClick={handleSave} style={{ background: "rgba(56,151,240,0.2)", border: "1.5px solid #3897f0", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#3897f0", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <button onClick={handleSave} className="hover-button" style={{ background: "rgba(56,151,240,0.2)", border: "1.5px solid #3897f0", borderRadius: "50%", width: 36, height: 36, cursor: "pointer", color: "#3897f0", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <CheckOutlined />
               </button>
             </div>
@@ -347,6 +348,7 @@ const Profile: React.FC = () => {
             {!isOwnProfile && (
               <button
                 onClick={handleFollowToggle}
+                className="hover-button"
                 style={{ padding: "5px 12px", borderRadius: 999, border: `1.5px solid ${isFollowing ? "#3a3f4a" : "#833ab4"}`, backgroundColor: isFollowing ? "transparent" : "#833ab4", color: isFollowing ? "#9ca3af" : "#ffffff", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
               >
                 {isFollowing ? "Unfollow" : "Follow"}
@@ -381,18 +383,21 @@ const Profile: React.FC = () => {
             <div style={{ display: "flex", gap: 8, marginBottom: 28, flexWrap: "wrap" }}>
               <button
                 onClick={handleOpenFollowingModal}
+                className="hover-button"
                 style={{ flex: 1, minWidth: 80, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#d1d5db", fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}
               >
                 Following
               </button>
               <button
                 onClick={handleOpenFollowersModal}
+                className="hover-button"
                 style={{ flex: 1, minWidth: 80, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#d1d5db", fontSize: 13, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap" }}
               >
                 Followers
               </button>
               <button
                 onClick={handleLogout}
+                className="hover-button"
                 style={{ flex: 1, minWidth: 80, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#f87171", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
               >
                 Logout
@@ -418,6 +423,7 @@ const Profile: React.FC = () => {
               </div>
               <button
                 type="submit"
+                className="hover-button"
                 disabled={joiningByCode || !inviteCode.trim()}
                 style={{ height: 42, borderRadius: 999, border: "none", backgroundColor: "#833ab4", color: "#fff", fontSize: 13, fontWeight: 700, padding: "0 18px", cursor: "pointer", opacity: (!inviteCode.trim() || joiningByCode) ? 0.5 : 1, flexShrink: 0 }}
               >
@@ -506,6 +512,7 @@ const Profile: React.FC = () => {
       <div style={{ position: "relative", height: 72, paddingBottom: 8, backgroundColor: "#16181D", borderTop: "1px solid #2a2d35", display: "flex", alignItems: "center", flexShrink: 0 }}>
         <button
           onClick={() => router.push("/map")}
+          className="hover-button"
           style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 }}
         >
           <CompassOutlined style={{ fontSize: 22, color: "#6b7280" }} />
@@ -516,6 +523,7 @@ const Profile: React.FC = () => {
         {/* Drop a pin — centrato, porta alla mappa */}
         <button
           onClick={() => router.push("/map")}
+          className="hover-button"
           style={{
             position: "absolute",
             left: "50%",
@@ -556,6 +564,7 @@ const Profile: React.FC = () => {
 
         <button
           onClick={() => router.push(`/users/${profileId}`)}
+          className="hover-button"
           style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 }}
         >
           <UserOutlined style={{ fontSize: 22, color: "#fff" }} />
@@ -594,7 +603,7 @@ const Profile: React.FC = () => {
                       {selectedEvent.category && <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>{CATEGORY_LABELS[selectedEvent.category]}</span>}
                     </div>
                   </div>
-                  <button onClick={() => setSelectedEvent(null)} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "rgba(255,255,255,0.8)", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>×</button>
+                  <button onClick={() => setSelectedEvent(null)} className="hover-button" style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "rgba(255,255,255,0.8)", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>×</button>
                 </div>
 
                 {/* Description */}
@@ -627,7 +636,7 @@ const Profile: React.FC = () => {
                 {/* Buttons */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
                 {!isCreator && !isUserParticipant(selectedEvent) && (
-                  <button onClick={handleJoinEvent} disabled={joiningEvent}
+                  <button onClick={handleJoinEvent} disabled={joiningEvent} className="hover-button"
                     style={{ width: "100%", height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
                     {joiningEvent ? "Joining…" : "Join Event"}
                   </button>
@@ -636,6 +645,7 @@ const Profile: React.FC = () => {
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
                       onClick={() => router.push(`/map?openChat=${selectedEvent.id}`)}
+                      className="hover-button"
                       style={{ flex: 1, height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}
                     >
                       Join Chat
@@ -644,6 +654,7 @@ const Profile: React.FC = () => {
                       <button
                         onClick={() => handleLeaveEvent(selectedEvent)}
                         disabled={leavingEvent}
+                        className="hover-button"
                         style={{ flex: 1, height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f87171", fontWeight: 600, fontSize: 14, cursor: "pointer", opacity: leavingEvent ? 0.6 : 1 }}
                       >
                         {leavingEvent ? "Leaving…" : "Leave"}
@@ -653,6 +664,7 @@ const Profile: React.FC = () => {
                   )}
                   <button
                     onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}
+                    className="hover-button"
                     style={{ width: "100%", height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f3f4f6", fontWeight: 500, fontSize: 14, cursor: "pointer" }}
                   >
                     View Board
@@ -660,6 +672,7 @@ const Profile: React.FC = () => {
                   {isCreator && !selectedEvent.cancelledAt && (
                     <button
                       onClick={() => handleDeleteEvent(selectedEvent)}
+                      className="hover-button"
                       style={{ width: "100%", height: 44, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#f87171", fontWeight: 500, fontSize: 14, cursor: "pointer" }}
                     >
                       Delete Event
@@ -685,7 +698,7 @@ const Profile: React.FC = () => {
           >
             <div style={{ padding: "18px 18px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #2e3138", flexShrink: 0 }}>
               <span style={{ fontWeight: 700, fontSize: 16, color: "#fff" }}>Following</span>
-              <button onClick={() => setFollowingModalOpen(false)} style={{ background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "#aaa", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+              <button onClick={() => setFollowingModalOpen(false)} className="hover-button" style={{ background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "#aaa", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
               {loadingFollowing ? (
@@ -700,6 +713,7 @@ const Profile: React.FC = () => {
                   </div>
                   <button
                     onClick={() => { setFollowingModalOpen(false); router.push(`/users/${u.id}`); }}
+                    className="hover-button"
                     style={{ padding: "4px 14px", borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#d1d5db", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                   >View</button>
                 </div>
@@ -721,7 +735,7 @@ const Profile: React.FC = () => {
           >
             <div style={{ padding: "18px 18px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #2e3138", flexShrink: 0 }}>
               <span style={{ fontWeight: 700, fontSize: 16, color: "#fff" }}>Followers</span>
-              <button onClick={() => setFollowersModalOpen(false)} style={{ background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "#aaa", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+              <button onClick={() => setFollowersModalOpen(false)} className="hover-button" style={{ background: "rgba(255,255,255,0.08)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "#aaa", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
               {loadingFollowers ? (
@@ -736,6 +750,7 @@ const Profile: React.FC = () => {
                   </div>
                   <button
                     onClick={() => { setFollowersModalOpen(false); router.push(`/users/${u.id}`); }}
+                    className="hover-button"
                     style={{ padding: "4px 14px", borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#d1d5db", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                   >View</button>
                 </div>
@@ -797,6 +812,7 @@ const Profile: React.FC = () => {
 
               <button
                 onClick={() => setEditing(false)}
+                className="hover-button"
                 style={{
                   background: "rgba(255,255,255,0.08)",
                   border: "none",
@@ -962,6 +978,7 @@ const Profile: React.FC = () => {
                     form.resetFields(["password", "confirmPassword"]);
                     setEditing(false);
                   }}
+                  className="hover-button"
                   type="button"
                   style={{
                     flex: 1,
@@ -979,6 +996,7 @@ const Profile: React.FC = () => {
 
                 <button
                   onClick={handleSave}
+                  className="hover-button"
                   type="button"
                   style={{
                     flex: 1,

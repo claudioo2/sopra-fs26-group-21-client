@@ -15,6 +15,7 @@ import useLocalStorage from "@/hooks/useLocalStorage";
 import { EventCategory, EventDTO } from "@/types/event";
 import { getApiDomain } from "@/utils/domain";
 import { User } from "@/types/user";
+import "@/styles/globals.css";
 
 const CATEGORY_COLORS: Record<EventCategory, string> = {
   SPORTS:  "#f97316",
@@ -1548,7 +1549,7 @@ export default function MapPage() {
 
               {/* Header */}
               <div style={{ padding: "16px 16px 14px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-                <button onClick={handleCloseChat} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>←</button>
+                <button onClick={handleCloseChat} className="hover-button" style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>←</button>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {chatEvent.title}
@@ -1609,6 +1610,7 @@ export default function MapPage() {
                 <button
                   onClick={handleSendMessage}
                   disabled={!chatInput.trim() || !stompConnected}
+                  className="hover-button"
                   style={{ height: 42, borderRadius: 999, border: "none", backgroundColor: catColor, color: "#fff", fontWeight: 600, fontSize: 13, padding: "0 18px", cursor: "pointer", opacity: (!chatInput.trim() || !stompConnected) ? 0.5 : 1, flexShrink: 0 }}
                 >
                   {stompConnected ? "Send" : "…"}
@@ -1878,6 +1880,7 @@ export default function MapPage() {
           }}>
             <button
               onClick={() => setMyEventsOnly((v) => !v)}
+              className="hover-button"
               style={{
                 padding: "3px 11px",
                 borderRadius: "999px",
@@ -1896,6 +1899,7 @@ export default function MapPage() {
 
             <button
               onClick={() => setFriendsOnly((v) => !v)}
+              className="hover-button"
               style={{
                 padding: "3px 11px",
                 borderRadius: "999px",
@@ -1914,6 +1918,7 @@ export default function MapPage() {
 
             <button
               onClick={() => setIncludePast((v) => !v)}
+              className="hover-button"
               style={{
                 padding: "3px 11px",
                 borderRadius: "999px",
@@ -1938,6 +1943,7 @@ export default function MapPage() {
                 <button
                   key={cat}
                   onClick={() => toggleCategory(cat)}
+                  className="hover-button"
                   style={{
                     padding: "3px 11px",
                     borderRadius: "999px",
@@ -1958,6 +1964,7 @@ export default function MapPage() {
             {activeCategories.size > 0 && (
               <button
                 onClick={() => setActiveCategories(new Set())}
+                className="hover-button"
                 style={{
                   padding: "3px 11px",
                   borderRadius: "999px",
@@ -1999,7 +2006,7 @@ export default function MapPage() {
 
             {/* Header */}
             <div style={{ padding: "16px 16px 14px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-              <button onClick={closePanel} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>←</button>
+              <button onClick={closePanel} className="hover-button" style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 32, height: 32, cursor: "pointer", color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>←</button>
               <div>
                 <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#fff" }}>Create Event</h2>
                 <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1, color: "rgba(255,255,255,0.65)" }}>
@@ -2130,6 +2137,7 @@ export default function MapPage() {
                   <Form.Item style={{ marginBottom: 0 }}>
                     <button
                       type="submit"
+                      className="hover-button"
                       style={{ width: "100%", height: 48, borderRadius: 999, border: "none", background: "linear-gradient(135deg, #833ab4, #6a2d93)", color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer", boxShadow: "0 4px 14px rgba(131,58,180,0.35)" }}
                     >
                       Create Event
@@ -2179,7 +2187,7 @@ export default function MapPage() {
                     {selectedEvent.category && <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>{CATEGORY_LABELS[selectedEvent.category]}</span>}
                   </div>
                 </div>
-                <button onClick={() => setSelectedEvent(null)} style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "rgba(255,255,255,0.8)", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>×</button>
+                <button onClick={() => setSelectedEvent(null)} className="hover-button" style={{ background: "rgba(0,0,0,0.25)", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer", color: "rgba(255,255,255,0.8)", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>×</button>
               </div>
 
               {/* Description */}
@@ -2189,15 +2197,15 @@ export default function MapPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
                     <Input.TextArea autoFocus rows={3} value={editValue} onChange={(e) => setEditValue(e.target.value)} />
                     <div style={{ display: "flex", gap: 8 }}>
-                      <Button style={{ width: 100, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }} loading={savingEdit} onClick={() => handleUpdateField("description", editValue)}>Save</Button>
-                      <Button style={{ width: 100, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#f87171", fontWeight: 500, fontSize: 14, cursor: "pointer" }} onClick={() => setEditingField(null)}>Cancel</Button>
+                      <Button className="hover-button" style={{ width: 100, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }} loading={savingEdit} onClick={() => handleUpdateField("description", editValue)}>Save</Button>
+                      <Button className="hover-button" style={{ width: 100, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#f87171", fontWeight: 500, fontSize: 14, cursor: "pointer" }} onClick={() => setEditingField(null)}>Cancel</Button>
                     </div>
                   </div>
                 ) : (
                   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
                     <p style={{ ...value, fontWeight: 400, fontSize: 14, lineHeight: 1.6, color: "#d1d5db" }}>{selectedEvent.description ?? "No description."}</p>
                     {isCreator && (
-                      <button onClick={() => { setEditingField("description"); setEditValue(selectedEvent.description ?? ""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#bbb", fontSize: 14, flexShrink: 0 }}>✏️</button>
+                      <button className="hover-button" onClick={() => { setEditingField("description"); setEditValue(selectedEvent.description ?? ""); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#bbb", fontSize: 14, flexShrink: 0 }}>✏️</button>
                     )}
                   </div>
                 )}
@@ -2220,7 +2228,7 @@ export default function MapPage() {
               {participantUsers.length > 0 && (
                 <div style={card}>
                   <span style={label}>Participants ({participantUsers.length})</span>
-                  <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px", maxHeight: "190px", overflowY: "auto", paddingRight: "15px" }}>
+                  <div style={{ marginTop: "6px", display: "flex", flexDirection: "column", gap: "6px", maxHeight: "100px", overflowY: "auto", paddingRight: "15px" }}>
                     {participantUsers.map((p) => {
                       const isMe = Number(p.id) === Number(userId);
                       const isFollowing = followedUsers.some((u) => Number(u.id) === Number(p.id));
@@ -2228,6 +2236,7 @@ export default function MapPage() {
                         <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                           <button
                             onClick={() => { setSelectedEvent(null); router.push(`/users/${p.id}`); }}
+                            className="hover-button"
                             style={{ background: "none", border: "none", cursor: "pointer", color: "#f3f4f6", fontSize: 14, fontWeight: 500, padding: 0, textAlign: "left" }}
                           >
                             {p.username ?? `User ${p.id}`}
@@ -2235,6 +2244,7 @@ export default function MapPage() {
                           {!isMe && (
                             <button
                               onClick={() => isFollowing ? handleUnFollowUser(Number(p.id)) : handleFollowUser(Number(p.id))}
+                              className="hover-button"
                               style={{ padding: "2px 12px", borderRadius: 999, border: `1.5px solid ${isFollowing ? "#3a3f4a" : catColor}`, backgroundColor: isFollowing ? "transparent" : catColor, color: isFollowing ? "#9ca3af" : "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
                             >
                               {isFollowing ? "Unfollow" : "Follow"}
@@ -2269,6 +2279,7 @@ export default function MapPage() {
                   </div>
                   <button
                     onClick={() => {navigator.clipboard.writeText(selectedEvent.inviteCode ?? ""); messageApi.success("Invite code copied");}}
+                    className="hover-button"
                     style={{
                       background: "none",
                       border: "none",
@@ -2331,19 +2342,19 @@ export default function MapPage() {
               {/* Buttons */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
                 {!isCreator && !selectedEvent.isParticipant && (
-                  <button onClick={handleJoinEvent} disabled={joiningEvent}
+                  <button onClick={handleJoinEvent} disabled={joiningEvent} className="hover-button"
                     style={{ width: "100%", height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
                     {joiningEvent ? "Joining…" : "Join Event"}
                   </button>
                 )}
                 {(selectedEvent.isParticipant || isCreator) && (
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => handleOpenChat(selectedEvent)}
+                    <button onClick={() => handleOpenChat(selectedEvent)} className="hover-button"
                       style={{ flex: 1, height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
                       Join Chat
                     </button>
                     {!isCreator && (
-                      <button onClick={() => handleLeaveEvent(selectedEvent)} disabled={leavingEvent}
+                      <button onClick={() => handleLeaveEvent(selectedEvent)} disabled={leavingEvent} className="hover-button"
                         style={{ flex: 1, height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f87171", fontWeight: 600, fontSize: 14, cursor: "pointer" }}>
                         {leavingEvent ? "Leaving…" : "Leave Event"}
                       </button>
@@ -2351,11 +2362,12 @@ export default function MapPage() {
                   </div>
                 )}
                 <button onClick={() => router.push(`/events/${selectedEvent.id}/board?title=${encodeURIComponent(selectedEvent.title)}`)}
+                  className="hover-button"
                   style={{ width: "100%", height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f3f4f6", fontWeight: 500, fontSize: 14, cursor: "pointer" }}>
                   View Board
                 </button>
                 {isCreator && (
-                  <button onClick={() => handleDeleteEvent(selectedEvent)}
+                  <button onClick={() => handleDeleteEvent(selectedEvent)} className="hover-button"
                     style={{ width: "100%", height: 44, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#f87171", fontWeight: 500, fontSize: 14, cursor: "pointer" }}>
                     Delete Event
                   </button>
@@ -2381,6 +2393,7 @@ export default function MapPage() {
         {/* Drop a pin — absolutely centered in the nav */}
         <button
           onClick={panelOpen ? closePanel : openPanel}
+          className="hover-button"
           style={{
             position: "absolute",
             left: "50%",
@@ -2430,6 +2443,7 @@ export default function MapPage() {
         {/* Explore */}
         <button
           onClick={() => {}}
+          className="hover-button"
           style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 }}
         >
           <CompassOutlined style={{ fontSize: 22, color: "#fff" }} />
@@ -2443,6 +2457,7 @@ export default function MapPage() {
         {/* Profile */}
         <button
           onClick={() => router.push(`/users/${userId}`)}
+          className="hover-button"
           style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 8 }}
         >
           <UserOutlined style={{ fontSize: 22, color: "#6b7280" }} />

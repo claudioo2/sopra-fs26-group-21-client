@@ -213,7 +213,7 @@ const Login: React.FC = () => {
                   <Input.Password placeholder="Enter password" disabled={loading} />
                 </Form.Item>
                 <Form.Item style={{ marginBottom: 0 }}>
-                  <Button type="primary" htmlType="submit" block loading={loading} style={{ height: 44, fontWeight: 600, fontSize: 15 }}>
+                  <Button type="primary" className="hover-button" htmlType="submit" block loading={loading} style={{ height: 44, fontWeight: 600, fontSize: 15 }}>
                     {loading ? "Signing in…" : "Login"}
                   </Button>
                 </Form.Item>
@@ -224,6 +224,7 @@ const Login: React.FC = () => {
               <span style={{ color: "#6b7280", fontSize: 14 }}>{"Don't have an account? "}</span>
               <span
                 onClick={() => router.push("/register")}
+                className="hover-button"
                 style={{ color: "#3897f0", fontSize: 14, cursor: "pointer", fontWeight: 500 }}
               >
                 Register here
