@@ -108,7 +108,21 @@ Push to `main` → GitHub Actions runs [`.github/workflows/verceldeployment.yml`
 
 ## Illustrations
 
-The client has four main user flows. They are entered after the initial login / register screens.
+The client has four main user flows. They are entered after the initial login / register screens (which can be reached via the homepage).
+
+<div align="center" style="margin-bottom: 50;">
+    <img src="register.png" width="500"/>
+    <br>
+    Register page
+</div>
+
+<br>
+
+<div align="center">
+    <img src="login.png" width="500"/>
+    <br>
+    Login page
+</div>
 
 ### 1. Map exploration → join an event
 
@@ -122,6 +136,22 @@ The client has four main user flows. They are entered after the initial login / 
 
 The map opens immediately on Zurich while geolocation resolves in the background, then `flyTo`s the user's position once `navigator.geolocation` succeeds (3-second timeout). Filter toggles (category, Friends-Only, My Events, Past Events) persist in `sessionStorage` so a refresh does not reset the view.
 
+<div align="center">
+    <img src="map-view.png" width="500"/>
+    <br>
+    Map page
+</div>
+
+<br>
+
+You can select the pins to view the events. Depending on your role as creator, participant or non-participant, the event view will appear differently:
+
+<div align="center">
+    <img src="event-view.png" width="500"/>
+    <br>
+    If you are looking for an event to partcipate then you can join through the "Join Event" button
+</div>
+
 ### 2. Create an event
 
 ```
@@ -130,8 +160,17 @@ The map opens immediately on Zurich while geolocation resolves in the background
           ├─ green pin overlay = submitted coordinates
           └─ POST /events  →  new pin appears for everyone on next moveend
 ```
+If you want to create an event then you can click on the "Drop a pin" button which is located in the middle of 
+the navigation bar (at the bottom of the map page). This will open a creation form and a pin that can be dropped on the
+desired location.
 
 The creator is auto-added as the first participant, and the server generates a unique 8-character invite code visible only to them.
+
+<div align="center">
+    <img src="creation.png" width="500"/>
+    <br>
+    To create an event, set the position of the event and fill out the creation form
+</div>
 
 ### 3. Real-time chat
 
@@ -142,8 +181,15 @@ event modal  →  "Open chat"
                 ├─ subscribe /topic/chat/{eventId}
                 └─ publish /app/chat/{eventId}  (token in body)
 ```
+The chat can be found on the event-view and by clicking on the "Join Chat" button.
 
 The chat survives a soft-delete: when the organizer cancels an event the row is kept for **24 hours** so participants can still coordinate. After that the cleanup job hard-deletes the event.
+
+<div align="center">
+    <img src="event-chat.png" width="500"/>
+    <br>
+    Chat with other participants in real-time
+</div>
 
 ### 4. Profile, follow, rate
 
@@ -155,10 +201,25 @@ The chat survives a soft-delete: when the organizer cancels an event the row is 
   ├─ Upcoming events list (cancelled events get a red badge)
   └─ Rate the organizer (visible only after the event ends)
 ```
+The profile page, which can be reached by clicking on the profile icon on the navigation bar, appears different depending
+on the user (if it's you or some other user). There you can follow and unfollow other users, see their events and ratings, 
+edit your account, and join events through shared invitation codes. 
 
 Ratings are 1–5 stars, one per (user, event) — the DB enforces a `UNIQUE(rater_id, event_id)` constraint and a second submission returns `409`.
 
-*Screenshots: see the live deployment on Vercel.*
+<div align="center">
+    <img src="own-profile.png" width="500"/>
+    <br>
+    Profile page (own profile)
+</div>
+
+<br>
+
+<div align="center">
+    <img src="user-profile.png" width="500"/>
+    <br>
+    Profile Page (profile of a friend)
+</div>
 
 ---
 
