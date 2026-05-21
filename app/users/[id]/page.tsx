@@ -8,7 +8,6 @@ import { User } from "@/types/user";
 import { EventDTO, EventCategory } from "@/types/event";
 import { App, ConfigProvider, Form, Input, Rate } from "antd";
 import { ArrowLeftOutlined, EditOutlined, CheckOutlined, CloseOutlined, KeyOutlined, CompassOutlined, UserOutlined } from "@ant-design/icons";
-import { profile } from "console";
 
 const CATEGORY_LABELS: Record<EventCategory, string> = {
   SPORTS: "Sports", MUSIC: "Music", FOOD: "Food", ART: "Art",
@@ -59,6 +58,7 @@ const Profile: React.FC = () => {
   const [joiningByCode, setJoiningByCode] = useState(false);
   const [joiningEvent, setJoiningEvent] = useState(false);
   const [leavingEvent, setLeavingEvent] = useState(false);
+  const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const { message: messageApi } = App.useApp();
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
@@ -398,7 +398,7 @@ const Profile: React.FC = () => {
                 Followers
               </button>
               <button
-                onClick={handleLogout}
+                onClick={() => setLogoutModalOpen(true)}
                 className="hover-button"
                 style={{ flex: 1, minWidth: 80, height: 38, borderRadius: 999, border: "1.5px solid #2e3138", backgroundColor: "#16181D", color: "#f87171", fontSize: 13, fontWeight: 500, cursor: "pointer" }}
               >
@@ -1020,6 +1020,47 @@ const Profile: React.FC = () => {
         </div>
       )}
 
+      {/* Logout confirmation */}
+      {logoutModalOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 1300, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.55)", backdropFilter: "blur(3px)"}}
+          onClick={() => setLogoutModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: 380, maxWidth: "calc(100vw - 32px)", borderRadius: 24, backgroundColor: "#16181D", padding: 24, boxShadow: "0 12px 48px rgba(0,0,0,0.55)", border: "1px solid #2e3138"}}
+          >
+            <h2 style={{ color: "#fff", marginTop: 0, marginBottom: 12 }}>
+              Logout?
+            </h2>
+
+            <p style={{ color: "#9ca3af", marginBottom: 24}}>
+              Are you sure you want to log out?
+            </p>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setLogoutModalOpen(false)}
+                className="hover-button"
+                style={{ flex: 1, height: 44, borderRadius: 999, border: "1px solid #3a3f4a", background: "transparent", color: "#aaa", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={async () => {
+                  setLogoutModalOpen(false);
+                  await handleLogout();
+                }}
+                className="hover-button"
+                style={{ flex: 1, height: 44, borderRadius: 999, border: "none", background: "#dc2626", color: "#fff", cursor: "pointer", fontWeight: 700}}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
