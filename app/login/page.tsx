@@ -23,8 +23,9 @@ const Login: React.FC = () => {
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { router.prefetch("/map"); }, [router]);
-
   useEffect(() => { apiService.get("/users").catch(() => {}); }, [apiService]);
+
+  const mapBg = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/8.5417,47.3769,11/1280x800?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`;
 
   const handleLogin = async (values: FormFieldProps) => {
     setLoading(true);
@@ -44,8 +45,6 @@ const Login: React.FC = () => {
       }
     }
   };
-
-  const mapBg = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/8.5417,47.3769,11/1280x800?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`;
 
   return (
     <>
@@ -74,22 +73,17 @@ const Login: React.FC = () => {
               from { opacity: 0; transform: translateY(8px); }
               to   { opacity: 1; transform: translateY(0); }
             }
-            @keyframes glow-pulse {
-              0%, 100% { opacity: 0.4; transform: scale(1); }
-              50% { opacity: 0.7; transform: scale(1.15); }
-            }
           `}</style>
 
-          {/* Floating background category markers */}
           {([
-            { left: "6%",  delay: "0s",   dur: "7s",   w: 24, h: 31, color: "#f97316" }, // SPORTS
-            { left: "18%", delay: "1.4s", dur: "8.5s", w: 18, h: 23, color: "#a855f7" }, // MUSIC
-            { left: "30%", delay: "0.6s", dur: "6.5s", w: 28, h: 36, color: "#f43f5e" }, // FOOD
-            { left: "45%", delay: "2.2s", dur: "9s",   w: 16, h: 21, color: "#22c55e" }, // OUTDOOR
-            { left: "58%", delay: "0.9s", dur: "7.5s", w: 22, h: 28, color: "#eab308" }, // PARTY
-            { left: "70%", delay: "1.8s", dur: "8s",   w: 19, h: 25, color: "#3b82f6" }, // SOCIAL
-            { left: "82%", delay: "0.3s", dur: "6.8s", w: 26, h: 34, color: "#ec4899" }, // ART
-            { left: "91%", delay: "3.1s", dur: "7.2s", w: 17, h: 22, color: "#94a3b8" }, // OTHER
+            { left: "6%",  delay: "0s",   dur: "7s",   w: 24, h: 31, color: "#f97316" },
+            { left: "18%", delay: "1.4s", dur: "8.5s", w: 18, h: 23, color: "#a855f7" },
+            { left: "30%", delay: "0.6s", dur: "6.5s", w: 28, h: 36, color: "#f43f5e" },
+            { left: "45%", delay: "2.2s", dur: "9s",   w: 16, h: 21, color: "#22c55e" },
+            { left: "58%", delay: "0.9s", dur: "7.5s", w: 22, h: 28, color: "#eab308" },
+            { left: "70%", delay: "1.8s", dur: "8s",   w: 19, h: 25, color: "#3b82f6" },
+            { left: "82%", delay: "0.3s", dur: "6.8s", w: 26, h: 34, color: "#ec4899" },
+            { left: "91%", delay: "3.1s", dur: "7.2s", w: 17, h: 22, color: "#94a3b8" },
             { left: "12%", delay: "2.8s", dur: "8.2s", w: 20, h: 26, color: "#a855f7" },
             { left: "52%", delay: "1.1s", dur: "6.2s", w: 15, h: 20, color: "#f97316" },
           ] as { left: string; delay: string; dur: string; w: number; h: number; color: string }[]).map((p, i) => (
@@ -106,18 +100,8 @@ const Login: React.FC = () => {
             </svg>
           ))}
 
-          {/* Glow behind center logo */}
-          <div style={{
-            position: "absolute",
-            width: 140, height: 140, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(131,58,180,0.5) 0%, rgba(253,29,29,0.3) 50%, transparent 70%)",
-            animation: "glow-pulse 2s ease-in-out infinite",
-            zIndex: 1,
-          }} />
-
-          {/* Center logo — matches favicon.svg */}
           <svg viewBox="0 0 32 32" width="72" height="72"
-            style={{ animation: "pin-pulse 1.8s ease-in-out infinite", zIndex: 2, filter: "drop-shadow(0 4px 16px rgba(253,29,29,0.5))" }}>
+            style={{ animation: "pin-pulse 1.8s ease-in-out infinite", zIndex: 2, filter: "drop-shadow(0 4px 24px rgba(131,58,180,0.7))" }}>
             <defs>
               <linearGradient id="loading-grad" x1="10%" y1="0%" x2="90%" y2="100%">
                 <stop offset="0%" stopColor="#833ab4" />
@@ -145,43 +129,58 @@ const Login: React.FC = () => {
         </div>
       )}
 
-      <div style={{
+      <main style={{
         minHeight: "100vh",
-        backgroundImage: `url(${mapBg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
         position: "relative",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        padding: "0 16px",
+        overflow: "hidden",
       }}>
-        <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(10,10,10,0.72)" }} />
+        {/* Blurred map background */}
+        <div style={{
+          position: "absolute", inset: "-10px",
+          backgroundImage: `url(${mapBg})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          filter: "blur(4px)",
+          transform: "scale(1.03)",
+          zIndex: 0,
+        }} />
+        <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(10,10,10,0.68)", zIndex: 1 }} />
 
-        <div style={{ position: "relative", zIndex: 1, width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {/* Header */}
+        <div style={{
+          position: "relative", zIndex: 2,
+          width: "100%", maxWidth: 1400,
+          padding: "20px 28px",
+          display: "flex", alignItems: "center", gap: 14,
+        }}>
+          <div style={{ width: 52, height: 52, flexShrink: 0 }}>
+            <img src="/favicon.svg" alt="Spontaneo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+          </div>
+          <div>
+            <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: 24, letterSpacing: "-0.5px" }}>Spontaneo</p>
+          </div>
+        </div>
+
+        {/* Card area */}
+        <div style={{
+          position: "relative", zIndex: 2,
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+          width: "100%", padding: "0 16px 40px",
+        }}>
           <div style={{
             width: "100%",
             maxWidth: 400,
             backgroundColor: "#16181D",
-            borderRadius: 16,
+            borderRadius: 36,
             padding: "32px 28px",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+            border: "1px solid rgba(255,255,255,0.08)",
           }}>
             <div style={{ marginBottom: 28, textAlign: "center" }}>
-              <div style={{
-                width: 64,
-                height: 64,
-                borderRadius: "50%",
-                background: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 28,
-                margin: "0 auto 16px",
-              }}>
-                📍
-              </div>
+              <img src="/favicon.svg" alt="Spontaneo" width={56} height={56} style={{ display: "block", margin: "0 auto 16px" }} />
               <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 700, margin: 0 }}>Welcome back</h1>
               <p style={{ color: "#6b7280", fontSize: 14, margin: "6px 0 0 0" }}>Sign in to continue</p>
             </div>
@@ -191,9 +190,12 @@ const Login: React.FC = () => {
                 colorText: "#fff",
                 colorTextPlaceholder: "#6b7280",
                 colorBorder: "#2e3138",
-                colorPrimary: "#3897f0",
+                colorPrimary: "#833ab4",
                 colorTextLabel: "#d1d5db",
                 colorError: "#ef4444",
+              },
+              components: {
+                Button: { colorPrimary: "#833ab4", algorithm: true },
               },
             }}>
               <Form form={form} name="login" size="large" onFinish={handleLogin} layout="vertical">
@@ -213,7 +215,19 @@ const Login: React.FC = () => {
                   <Input.Password placeholder="Enter password" disabled={loading} />
                 </Form.Item>
                 <Form.Item style={{ marginBottom: 0 }}>
-                  <Button type="primary" className="hover-button" htmlType="submit" block loading={loading} style={{ height: 44, fontWeight: 600, fontSize: 15 }}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    block
+                    loading={loading}
+                    style={{
+                      height: 44, fontWeight: 600, fontSize: 15,
+                      borderRadius: 999,
+                      background: "linear-gradient(135deg, #833ab4, #6a2d93)",
+                      border: "none",
+                      boxShadow: "0 4px 20px rgba(131,58,180,0.45)",
+                    }}
+                  >
                     {loading ? "Signing in…" : "Login"}
                   </Button>
                 </Form.Item>
@@ -224,15 +238,14 @@ const Login: React.FC = () => {
               <span style={{ color: "#6b7280", fontSize: 14 }}>{"Don't have an account? "}</span>
               <span
                 onClick={() => router.push("/register")}
-                className="hover-button"
-                style={{ color: "#3897f0", fontSize: 14, cursor: "pointer", fontWeight: 500 }}
+                style={{ color: "#833ab4", fontSize: 14, cursor: "pointer", fontWeight: 500 }}
               >
                 Register here
               </span>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </>
   );
 };
