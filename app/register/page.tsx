@@ -21,10 +21,12 @@ const Register: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [slowHint, setSlowHint] = useState(false);
   const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => { router.prefetch("/map"); }, [router]);
   const { set: setToken } = useLocalStorage<string>("token", "");
   const { set: setUserId } = useLocalStorage<string>("userId", "");
+
+  useEffect(() => { router.prefetch("/map"); }, [router]);
+
+  const mapBg = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/8.5417,47.3769,11/1280x800?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`;
 
   const handleRegister = async (values: FormFieldProps) => {
     setLoading(true);
@@ -61,8 +63,6 @@ const Register: React.FC = () => {
     }
   };
 
-  const mapBg = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/8.5417,47.3769,11/1280x800?access_token=${process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}`;
-
   return (
     <>
       {/* Loading overlay */}
@@ -89,10 +89,6 @@ const Register: React.FC = () => {
             @keyframes fade-in {
               from { opacity: 0; transform: translateY(8px); }
               to   { opacity: 1; transform: translateY(0); }
-            }
-            @keyframes glow-pulse {
-              0%, 100% { opacity: 0.4; transform: scale(1); }
-              50% { opacity: 0.7; transform: scale(1.15); }
             }
           `}</style>
 
@@ -121,16 +117,8 @@ const Register: React.FC = () => {
             </svg>
           ))}
 
-          <div style={{
-            position: "absolute",
-            width: 140, height: 140, borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(131,58,180,0.5) 0%, rgba(253,29,29,0.3) 50%, transparent 70%)",
-            animation: "glow-pulse 2s ease-in-out infinite",
-            zIndex: 1,
-          }} />
-
           <svg viewBox="0 0 32 32" width="72" height="72"
-            style={{ animation: "pin-pulse 1.8s ease-in-out infinite", zIndex: 2, filter: "drop-shadow(0 4px 16px rgba(253,29,29,0.5))" }}>
+            style={{ animation: "pin-pulse 1.8s ease-in-out infinite", zIndex: 2, filter: "drop-shadow(0 4px 24px rgba(131,58,180,0.7))" }}>
             <defs>
               <linearGradient id="loading-grad" x1="10%" y1="0%" x2="90%" y2="100%">
                 <stop offset="0%" stopColor="#833ab4" />
@@ -158,127 +146,159 @@ const Register: React.FC = () => {
         </div>
       )}
 
-      <div style={{
+      <main style={{
         minHeight: "100vh",
-      backgroundImage: `url(${mapBg})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-      position: "relative",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "0 16px",
-    }}>
-      <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(10,10,10,0.72)" }} />
-
-      <div style={{ position: "relative", zIndex: 1, width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        position: "relative",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        overflow: "hidden",
+      }}>
+        {/* Blurred map background */}
         <div style={{
-          width: "100%",
-          maxWidth: 400,
-          backgroundColor: "#16181D",
-          borderRadius: 16,
-          padding: "32px 28px",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-        }}>
-          <div style={{ marginBottom: 28, textAlign: "center" }}>
-            <div style={{
-              width: 64,
-              height: 64,
-              borderRadius: "50%",
-              background: "linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 28,
-              margin: "0 auto 16px",
-            }}>
-              📍
-            </div>
-            <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 700, margin: 0 }}>Create account</h1>
-            <p style={{ color: "#6b7280", fontSize: 14, margin: "6px 0 0 0" }}>Join and start exploring events</p>
-          </div>
-          <ConfigProvider theme={{
-            token: {
-              colorBgContainer: "#23262d",
-              colorText: "#fff",
-              colorTextPlaceholder: "#6b7280",
-              colorBorder: "#2e3138",
-              colorPrimary: "#3897f0",
-              colorTextLabel: "#d1d5db",
-              colorError: "#ef4444",
-            },
-          }}>
-            <Form form={form} name="register" size="large" onFinish={handleRegister} layout="vertical">
-              <Form.Item
-                name="username"
-                label="Username"
-                rules={[{ required: true, message: "Please input your username!" }]}
-              >
-                <Input placeholder="Enter username" disabled={loading} />
-              </Form.Item>
-              <Form.Item
-                name="email"
-                label="Email"
-                rules={[
-                  { required: true, message: "Please input your email!" },
-                  { type: "email", message: "Please enter a valid email address." },
-                ]}
-              >
-                <Input placeholder="you@example.com" disabled={loading} />
-              </Form.Item>
-              <Form.Item
-                name="password"
-                label="Password"
-                rules={[
-                  { required: true, message: "Please input your password!" },
-                  { min: 6, message: "Password must be at least 6 characters." },
-                ]}
-                hasFeedback
-              >
-                <Input.Password placeholder="Enter password" disabled={loading} />
-              </Form.Item>
-              <Form.Item
-                name="confirmPassword"
-                label="Confirm password"
-                dependencies={["password"]}
-                hasFeedback
-                rules={[
-                  { required: true, message: "Please confirm your password!" },
-                  ({ getFieldValue }) => ({
-                    validator(_, value) {
-                      if (!value || getFieldValue("password") === value) {
-                        return Promise.resolve();
-                      }
-                      return Promise.reject(new Error("Passwords do not match."));
-                    },
-                  }),
-                ]}
-                style={{ marginBottom: 24 }}
-              >
-                <Input.Password placeholder="Confirm password" disabled={loading} />
-              </Form.Item>
-              <Form.Item style={{ marginBottom: 0 }}>
-                <Button type="primary" className="hover-button" htmlType="submit" block loading={loading} style={{ height: 44, fontWeight: 600, fontSize: 15 }}>
-                  {loading ? "Creating account…" : "Register"}
-                </Button>
-              </Form.Item>
-            </Form>
-          </ConfigProvider>
+          position: "absolute", inset: "-10px",
+          backgroundImage: `url(${mapBg})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          filter: "blur(4px)",
+          transform: "scale(1.03)",
+          zIndex: 0,
+        }} />
+        <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(10,10,10,0.68)", zIndex: 1 }} />
 
-          <div style={{ textAlign: "center", marginTop: 20 }}>
-            <span style={{ color: "#6b7280", fontSize: 14 }}>{"Already have an account? "}</span>
-            <span
-              onClick={() => router.push("/login")}
-              className="hover-button"
-              style={{ color: "#3897f0", fontSize: 14, cursor: "pointer", fontWeight: 500 }}
-            >
-              Login here
-            </span>
+        {/* Header */}
+        <div style={{
+          position: "relative", zIndex: 2,
+          width: "100%", maxWidth: 1400,
+          padding: "20px 28px",
+          display: "flex", alignItems: "center", gap: 14,
+        }}>
+          <div style={{ width: 52, height: 52, flexShrink: 0 }}>
+            <img src="/favicon.svg" alt="Spontaneo" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
+          </div>
+          <div>
+            <p style={{ margin: 0, color: "#fff", fontWeight: 800, fontSize: 24, letterSpacing: "-0.5px" }}>Spontaneo</p>
           </div>
         </div>
-      </div>
-    </div>
+
+        {/* Card area */}
+        <div style={{
+          position: "relative", zIndex: 2,
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+          width: "100%", padding: "0 16px 40px",
+        }}>
+          <div style={{
+            width: "100%",
+            maxWidth: 400,
+            backgroundColor: "#16181D",
+            borderRadius: 36,
+            padding: "24px 28px",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}>
+            <div style={{ marginBottom: 14, textAlign: "center" }}>
+              <img src="/favicon.svg" alt="Spontaneo" width={48} height={48} style={{ display: "block", margin: "0 auto 12px" }} />
+              <h1 style={{ color: "#fff", fontSize: 26, fontWeight: 700, margin: 0 }}>Create account</h1>
+              <p style={{ color: "#6b7280", fontSize: 14, margin: "5px 0 0 0" }}>Join and start exploring events</p>
+            </div>
+            <ConfigProvider theme={{
+              token: {
+                colorBgContainer: "#23262d",
+                colorText: "#fff",
+                colorTextPlaceholder: "#6b7280",
+                colorBorder: "#2e3138",
+                colorPrimary: "#833ab4",
+                colorTextLabel: "#d1d5db",
+                colorError: "#ef4444",
+              },
+              components: {
+                Button: { colorPrimary: "#833ab4", algorithm: true },
+              },
+            }}>
+              <Form form={form} name="register" size="large" onFinish={handleRegister} layout="vertical">
+                <Form.Item
+                  name="username"
+                  label="Username"
+                  style={{ marginBottom: 12 }}
+                  rules={[{ required: true, message: "Please input your username!" }]}
+                >
+                  <Input placeholder="Enter username" disabled={loading} />
+                </Form.Item>
+                <Form.Item
+                  name="email"
+                  label="Email"
+                  style={{ marginBottom: 12 }}
+                  rules={[
+                    { required: true, message: "Please input your email!" },
+                    { type: "email", message: "Please enter a valid email address." },
+                  ]}
+                >
+                  <Input placeholder="you@example.com" disabled={loading} />
+                </Form.Item>
+                <Form.Item
+                  name="password"
+                  label="Password"
+                  style={{ marginBottom: 12 }}
+                  rules={[
+                    { required: true, message: "Please input your password!" },
+                    { min: 6, message: "Password must be at least 6 characters." },
+                  ]}
+                  hasFeedback
+                >
+                  <Input.Password placeholder="Enter password" disabled={loading} />
+                </Form.Item>
+                <Form.Item
+                  name="confirmPassword"
+                  label="Confirm password"
+                  dependencies={["password"]}
+                  hasFeedback
+                  rules={[
+                    { required: true, message: "Please confirm your password!" },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (!value || getFieldValue("password") === value) {
+                          return Promise.resolve();
+                        }
+                        return Promise.reject(new Error("Passwords do not match."));
+                      },
+                    }),
+                  ]}
+                  style={{ marginBottom: 16 }}
+                >
+                  <Input.Password placeholder="Confirm password" disabled={loading} />
+                </Form.Item>
+                <Form.Item style={{ marginBottom: 0 }}>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    block
+                    loading={loading}
+                    style={{
+                      height: 44, fontWeight: 600, fontSize: 15,
+                      borderRadius: 999,
+                      background: "linear-gradient(135deg, #833ab4, #6a2d93)",
+                      border: "none",
+                      boxShadow: "0 4px 20px rgba(131,58,180,0.45)",
+                    }}
+                  >
+                    {loading ? "Creating account…" : "Register"}
+                  </Button>
+                </Form.Item>
+              </Form>
+            </ConfigProvider>
+
+            <div style={{ textAlign: "center", marginTop: 12 }}>
+              <span style={{ color: "#6b7280", fontSize: 14 }}>{"Already have an account? "}</span>
+              <span
+                onClick={() => router.push("/login")}
+                style={{ color: "#833ab4", fontSize: 14, cursor: "pointer", fontWeight: 500 }}
+              >
+                Login here
+              </span>
+            </div>
+          </div>
+        </div>
+      </main>
     </>
   );
 };
