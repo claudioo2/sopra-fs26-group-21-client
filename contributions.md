@@ -163,7 +163,7 @@ reason).
 
 | **Student**        | **Date** | **Link to Commit** | **Description**                 | **Relevance**                       |
 | ------------------ | -------- | ------------------ | ------------------------------- | ----------------------------------- |
-| **GabrielVuattoux** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
+| **GabrielVuattoux** | 21.05.2026 | client: https://github.com/claudioo2/sopra-fs26-group-21-client/commit/17841e462767be2bfdf865db5867c83f5326628c server: https://github.com/claudioo2/sopra-fs26-group-21-server/commit/2b38a9a | Reject joining events that have already ended on both the map and invite-code paths; also fix a map unmount crash (getOwnLayer TypeError) (closes #143) | Prevents users from joining events that are already over while keeping chat/board access for existing participants — aligns the rules with what a "past event" should support |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
 | **fra-a11y** | [date]   | [Link to Commit 1] | [Brief description of the task] | [Why this contribution is relevant] |
 |                    | [date]   | [Link to Commit 2] | [Brief description of the task] | [Why this contribution is relevant] |
