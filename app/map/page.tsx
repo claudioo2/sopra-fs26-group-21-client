@@ -480,6 +480,11 @@ export default function MapPage() {
 
     if (pulseAnimationRef.current === null) {
       const animatePulse = () => {
+        // Bail out if the map was removed (style is gone — calling getLayer would throw)
+        if (mapInstanceRef.current !== map || !map.getStyle()) {
+          pulseAnimationRef.current = null;
+          return;
+        }
         if (!map.getLayer("events-pulse")) {
           pulseAnimationRef.current = null;
           return;
@@ -981,7 +986,12 @@ export default function MapPage() {
     }
 
     return () => {
+      if (pulseAnimationRef.current !== null) {
+        cancelAnimationFrame(pulseAnimationRef.current);
+        pulseAnimationRef.current = null;
+      }
       mapInstanceRef.current?.remove();
+      mapInstanceRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMounted, token, apiService]);
@@ -2342,10 +2352,16 @@ export default function MapPage() {
               {/* Buttons */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
                 {!isCreator && !selectedEvent.isParticipant && (
-                  <button onClick={handleJoinEvent} disabled={joiningEvent} className="hover-button"
-                    style={{ width: "100%", height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-                    {joiningEvent ? "Joining…" : "Join Event"}
-                  </button>
+                  new Date(selectedEvent.endTime) < new Date() ? (
+                    <div style={{ width: "100%", padding: "12px 16px", borderRadius: 12, backgroundColor: "#23262d", border: "1.5px solid #3a3f4a", color: "#9ca3af", fontSize: 13, textAlign: "center" }}>
+                      This event has ended — joining is no longer possible.
+                    </div>
+                  ) : (
+                    <button onClick={handleJoinEvent} disabled={joiningEvent} className="hover-button"
+                      style={{ width: "100%", height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                      {joiningEvent ? "Joining…" : "Join Event"}
+                    </button>
+                  )
                 )}
                 {(selectedEvent.isParticipant || isCreator) && (
                   <div style={{ display: "flex", gap: 8 }}>
