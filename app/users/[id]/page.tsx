@@ -59,6 +59,8 @@ const Profile: React.FC = () => {
   const [joiningEvent, setJoiningEvent] = useState(false);
   const [leavingEvent, setLeavingEvent] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [deleteEventModalOpen, setDeleteEventModalOpen] = useState(false);
+  const [leaveEventModalOpen, setLeaveEventModalOpen] = useState(false);
   const { message: messageApi } = App.useApp();
 
   const isOwnProfile = userId && profileId && String(userId) === String(profileId);
@@ -201,9 +203,6 @@ const Profile: React.FC = () => {
   const handleDeleteEvent = async (selectedEvent: EventDTO | null) => {
     if (!selectedEvent) return;
 
-    const confirmed = window.confirm("Are you sure you want to delete this event?");
-    if (!confirmed) return;
-
     try {
       await apiService.delete(
         `/events/${selectedEvent.id}`,
@@ -271,7 +270,9 @@ const Profile: React.FC = () => {
       }
     };
 
-  const handleLeaveEvent = async (event: EventDTO) => {
+  const handleLeaveEvent = async (event: EventDTO | null) => {
+    if (!event) return;
+    
     setLeavingEvent(true);
     try {
       await apiService.delete(`/events/${event.id}/participants/${userId}`, { Authorization: `Bearer ${token}` });
@@ -654,7 +655,7 @@ const Profile: React.FC = () => {
                     </button>
                     {!isCreator && (
                       <button
-                        onClick={() => handleLeaveEvent(selectedEvent)}
+                        onClick={() => setLeaveEventModalOpen(true)}
                         disabled={leavingEvent}
                         className="hover-button"
                         style={{ flex: 1, height: 48, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "#23262d", color: "#f87171", fontWeight: 600, fontSize: 14, cursor: "pointer", opacity: leavingEvent ? 0.6 : 1 }}
@@ -673,7 +674,7 @@ const Profile: React.FC = () => {
                   </button>
                   {isCreator && !selectedEvent.cancelledAt && (
                     <button
-                      onClick={() => handleDeleteEvent(selectedEvent)}
+                      onClick={() => setDeleteEventModalOpen(true)}
                       className="hover-button"
                       style={{ width: "100%", height: 44, borderRadius: 999, border: "1.5px solid #3a3f4a", backgroundColor: "transparent", color: "#f87171", fontWeight: 500, fontSize: 14, cursor: "pointer" }}
                     >
@@ -1056,6 +1057,87 @@ const Profile: React.FC = () => {
                 style={{ flex: 1, height: 44, borderRadius: 999, border: "none", background: "#dc2626", color: "#fff", cursor: "pointer", fontWeight: 700}}
               >
                 Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteEventModalOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+          onClick={() => setDeleteEventModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: 360, backgroundColor: "#16181D", borderRadius: 18, padding: 20, border: "1px solid #2e3138" }}
+          >
+            <h3 style={{ color: "#fff", marginTop: 0 }}>
+              Delete this event?
+            </h3>
+
+            <p style={{ color: "#9ca3af", fontSize: 13 }}>
+              This action cannot be undone.
+            </p>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button
+                onClick={() => setDeleteEventModalOpen(false)}
+                className="hover-button"
+                style={{ flex: 1, height: 42, borderRadius: 999, border: "1px solid #3a3f4a", backgroundColor: "transparent", color: "#fff", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => {
+                  handleDeleteEvent(selectedEvent);
+                  setDeleteEventModalOpen(false);
+                }}
+                className="hover-button"
+                style={{ flex: 1, height: 42, borderRadius: 999, border: "none", backgroundColor: "#ef4444", color: "#fff", fontWeight: 600, cursor: "pointer" }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {leaveEventModalOpen && (
+        <div
+          style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}
+          onClick={() => setLeaveEventModalOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: 360, backgroundColor: "#16181D", borderRadius: 18, padding: 20, border: "1px solid #2e3138" }}
+          >
+            <h3 style={{ color: "#fff", marginTop: 0 }}>
+              Leave this event?
+            </h3>
+
+            <p style={{ color: "#9ca3af", fontSize: 13 }}>
+              Are you sure you want to leave?
+            </p>
+
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              <button
+                onClick={() => setLeaveEventModalOpen(false)}
+                className="hover-button"
+                style={{ flex: 1, height: 42, borderRadius: 999, border: "1px solid #3a3f4a", backgroundColor: "transparent", color: "#fff", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={() => {
+                  handleLeaveEvent(selectedEvent);
+                  setLeaveEventModalOpen(false);
+                }}
+                className="hover-button"
+                style={{ flex: 1, height: 42, borderRadius: 999, border: "none", backgroundColor: "#ef4444", color: "#fff", fontWeight: 600, cursor: "pointer" }}
+              >
+                Leave
               </button>
             </div>
           </div>
