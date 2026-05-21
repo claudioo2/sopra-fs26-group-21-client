@@ -235,6 +235,8 @@ const Profile: React.FC = () => {
         ? "Invalid invite code. Please check and try again."
         : raw.includes("409") || raw.includes("already")
         ? "You are already a participant of this event."
+        : raw.includes("403") || raw.includes("ended")
+        ? "This event has already ended — joining is no longer possible."
         : "Something went wrong. Please try again.";
       messageApi.error(msg);
     } finally {
