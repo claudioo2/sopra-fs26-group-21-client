@@ -7,7 +7,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import Supercluster from "supercluster";
 import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Select, Rate } from "antd";
 import { LockOutlined, GlobalOutlined, PlusOutlined, CompassOutlined, UserOutlined } from "@ant-design/icons";
-import type { Dayjs } from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { useApi } from "@/hooks/useApi";
@@ -1467,7 +1467,9 @@ export default function MapPage() {
       .minute(values.endTime.minute())
       .second(0);
 
-    if (startDayjs.isBefore(new Date())) {
+    const fiveMinutesAgo = dayjs().subtract(5, "minute");
+
+    if (startDayjs.isBefore(fiveMinutesAgo)) {
       messageApi.error("Start time cannot be in the past.");
       return;
     }
