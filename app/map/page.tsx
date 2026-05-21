@@ -217,6 +217,7 @@ export default function MapPage() {
   const spiderMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const spiderClusterIdRef = useRef<number | null>(null);
   const superclusterRef = useRef<Supercluster<EventFeatureProps> | null>(null);
+  const clusterMarkersRef = useRef<Map<number, mapboxgl.Marker>>(new Map());
   const mapCenterRef = useRef<[number, number]>(DEFAULT_CENTER);
   const stompClientRef = useRef<Client | null>(null);
   const notifClientRef = useRef<Client | null>(null);
@@ -302,6 +303,146 @@ export default function MapPage() {
     spiderClusterIdRef.current = null;
   }, []);
 
+  // Expand the events of a cluster outward in a circle ("spiderfy"). Each
+  // leaf is a mapboxgl.Marker anchored at the cluster's lng/lat — NOT the
+  // leaf's own coordinates — and offset via CSS transform. This keeps
+  // leader lines geometrically valid when the user pans the map.
+  const spiderfyCluster = useCallback(
+    (map: mapboxgl.Map, clusterId: number, clusterLngLat: [number, number], leaves: EventDTO[]) => {
+      // If we're clicking the same cluster that's already spidered, collapse.
+      if (spiderClusterIdRef.current === clusterId) {
+        clearSpider();
+        return;
+      }
+      clearSpider();
+      spiderClusterIdRef.current = clusterId;
+
+      const N = leaves.length;
+      const radius = SPIDER_LEAF_RADIUS + Math.max(0, N - 5) * SPIDER_LEAF_RADIUS_PER_LEAF;
+
+      leaves.forEach((event, i) => {
+        const angle = (2 * Math.PI * i) / N - Math.PI / 2;
+        const dx = Math.cos(angle) * radius;
+        const dy = Math.sin(angle) * radius;
+
+        const container = document.createElement("div");
+        container.style.cssText = "position: relative; width: 0; height: 0;";
+
+        // Leader line: 2px thick, pivots at (0,0), grows to `radius` length
+        const line = document.createElement("div");
+        line.className = "spider-line";
+        line.style.width = "0px";
+        line.style.transform = `rotate(${angle}rad)`;
+        container.appendChild(line);
+
+        // Leaf pin — starts at (0,0), animates to (dx,dy)
+        const leaf = document.createElement("div");
+        leaf.className = "spider-leaf";
+        leaf.style.transform = "translate(0px, 0px)";
+        leaf.appendChild(buildPinElement(event));
+        leaf.addEventListener("click", (e) => {
+          e.stopPropagation();
+          setSelectedEvent(event);
+        });
+        container.appendChild(leaf);
+
+        const marker = new mapboxgl.Marker({ element: container, anchor: "center" })
+          .setLngLat(clusterLngLat)
+          .addTo(map);
+        spiderMarkersRef.current.push(marker);
+
+        // Trigger the slide-out animation on the next frame so the CSS
+        // transition runs (browsers batch the initial style + the new one
+        // without animating otherwise).
+        requestAnimationFrame(() => {
+          line.style.width = `${radius}px`;
+          leaf.style.transform = `translate(${dx}px, ${dy}px)`;
+        });
+      });
+    },
+    [clearSpider]
+  );
+
+  const handleClusterClick = useCallback(
+    (map: mapboxgl.Map, clusterId: number, clusterLngLat: [number, number]) => {
+      const source = map.getSource("events-source") as mapboxgl.GeoJSONSource | undefined;
+      if (!source) return;
+
+      source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (err || zoom == null) return;
+        const currentZoom = map.getZoom();
+        // Auto-zoom in if expansion is reachable and useful, otherwise spider.
+        if (zoom <= 14 && zoom > currentZoom) {
+          clearSpider();
+          map.easeTo({ center: clusterLngLat, zoom, duration: 500 });
+          return;
+        }
+        source.getClusterLeaves(clusterId, 100, 0, (leafErr, leaves) => {
+          if (leafErr || !leaves) return;
+          const events = leaves
+            .map((leaf) => {
+              const eventId = leaf.properties?.eventId;
+              return eventsByIdRef.current.get(Number(eventId));
+            })
+            .filter(Boolean) as EventDTO[];
+          if (events.length === 0) return;
+          spiderfyCluster(map, clusterId, clusterLngLat, events);
+        });
+      });
+    },
+    [clearSpider, spiderfyCluster]
+  );
+
+  const renderClusterDonuts = useCallback((map: mapboxgl.Map) => {
+    if (!map.getLayer("event-clusters")) return;
+    const features = map.queryRenderedFeatures({
+      layers: ["event-clusters"],
+    });
+
+    const seen = new Set<number>();
+    features.forEach((feature) => {
+      const props = feature.properties ?? {};
+      const clusterId = Number(props.cluster_id);
+      if (Number.isNaN(clusterId)) return;
+      seen.add(clusterId);
+
+      const total = Number(props.point_count ?? 0);
+      const counts: Partial<Record<EventCategory, number>> = {};
+      for (const cat of ALL_CATEGORIES) {
+        counts[cat] = Number(props[`count_${cat}`] ?? 0);
+      }
+
+      const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
+
+      const existing = clusterMarkersRef.current.get(clusterId);
+      if (existing) {
+        // Reuse marker — only update position (cluster_id is stable per
+        // group of points so the inner SVG count/donut also stays valid).
+        existing.setLngLat(coords);
+        return;
+      }
+
+      const element = buildClusterElement(counts, total);
+      element.addEventListener("click", (e) => {
+        e.stopPropagation();
+        handleClusterClick(map, clusterId, coords);
+      });
+
+      const marker = new mapboxgl.Marker({ element, anchor: "center" })
+        .setLngLat(coords)
+        .addTo(map);
+      clusterMarkersRef.current.set(clusterId, marker);
+    });
+
+    // Remove markers whose cluster no longer exists in the current viewport.
+    clusterMarkersRef.current.forEach((marker, clusterId) => {
+      if (!seen.has(clusterId)) {
+        marker.remove();
+        clusterMarkersRef.current.delete(clusterId);
+      }
+    });
+  }, [handleClusterClick]);
+
   const renderEventMarkers = async (map: mapboxgl.Map, events: EventDTO[]) => {
     eventsByIdRef.current = new Map(events.map((event) => [event.id, event]));
 
@@ -326,6 +467,7 @@ export default function MapPage() {
             icon: `pin-${event.category ?? "OTHER"}`,
             color: event.category ? CATEGORY_COLORS[event.category] : "#94a3b8",
             isOngoing,
+            category: event.category ?? "OTHER",
           },
         };
       }),
@@ -340,93 +482,37 @@ export default function MapPage() {
       return;
     }
 
+    // Per-category cluster aggregation — Mapbox sums these expressions across
+    // the cluster's children, exposing them as cluster feature properties
+    // (count_SPORTS, count_MUSIC, …) so we can draw a proportional donut.
+    const clusterProperties: Record<string, unknown> = {};
+    for (const cat of ALL_CATEGORIES) {
+      clusterProperties[`count_${cat}`] = [
+        "+",
+        ["case", ["==", ["get", "category"], cat], 1, 0],
+      ];
+    }
+
     map.addSource("events-source", {
       type: "geojson",
       data: geojson,
       cluster: true,
       clusterMaxZoom: 18,
       clusterRadius: 50,
+      clusterProperties,
     });
 
-    map.addLayer({
-      id: "event-clusters-glow",
-      type: "circle",
-      source: "events-source",
-      filter: ["has", "point_count"],
-      paint: {
-        "circle-radius": [
-          "step",
-          ["get", "point_count"],
-          28,
-          10,
-          34,
-          30,
-          42,
-          60,
-          50,
-        ],
-        "circle-color": [
-          "step",
-          ["get", "point_count"],
-          "#8b5cf6",
-          10,
-          "#3b82f6",
-          30,
-          "#22c55e",
-          60,
-          "#f97316",
-        ],
-        "circle-opacity": 0.18,
-        "circle-blur": 0.6,
-      },
-    });
-
+    // Invisible cluster layer — kept so queryRenderedFeatures can enumerate
+    // clusters in the viewport. The real visual is the HTML donut markers
+    // overlaid in renderClusterDonuts.
     map.addLayer({
       id: "event-clusters",
       type: "circle",
       source: "events-source",
       filter: ["has", "point_count"],
       paint: {
-        "circle-radius": [
-          "step",
-          ["get", "point_count"],
-          20,   // 1-9
-          10,
-          26,   // 10-29
-          30,
-          32,   // 30-59
-          60,
-          38,   // 60+
-        ],
-        "circle-color": [
-          "step",
-          ["get", "point_count"],
-          "#8b5cf6", // small clusters
-          10,
-          "#3b82f6", // medium
-          30,
-          "#22c55e", // bigger
-          60,
-          "#f97316", // large
-        ],
-        "circle-opacity": 0.92,
-        "circle-stroke-width": 3,
-        "circle-stroke-color": "#111827",
-      },
-    });
-
-    map.addLayer({
-      id: "event-cluster-count",
-      type: "symbol",
-      source: "events-source",
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": ["get", "point_count_abbreviated"],
-        "text-size": 15,
-        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
-      },
-      paint: {
-        "text-color": "#ffffff",
+        "circle-radius": 1,
+        "circle-opacity": 0,
       },
     });
 
@@ -518,53 +604,19 @@ export default function MapPage() {
       }
     });
 
+    // Fallback click handler on the (invisible) cluster layer — only fires
+    // for the rare pixel that lands on the layer but not on the overlaid
+    // HTML donut marker. The donut's own click listener is the primary path.
     map.on("click", "event-clusters", (e) => {
       const features = map.queryRenderedFeatures(e.point, {
         layers: ["event-clusters"],
       });
-
       const clusterFeature = features[0];
-
       if (!clusterFeature) return;
-
-      const clusterId = clusterFeature.properties?.cluster_id;
-
-      if (clusterId == null) return;
-
-      const source = map.getSource("events-source") as mapboxgl.GeoJSONSource;
-
-      source.getClusterExpansionZoom(Number(clusterId), (err, zoom) => {
-        if (err || zoom == null) return;
-
-        const coordinates = (clusterFeature.geometry as GeoJSON.Point)
-          .coordinates as [number, number];
-
-        const currentZoom = map.getZoom();
-
-        if (zoom <= 14 && zoom > currentZoom) {
-          map.easeTo({
-            center: coordinates,
-            zoom,
-            duration: 500,
-          });
-
-          return;
-        }
-
-        source.getClusterLeaves(Number(clusterId), 100, 0, (leafErr, leaves) => {
-          if (leafErr || !leaves) return;
-
-          const events = leaves
-            .map((leaf) => {
-              const eventId = leaf.properties?.eventId;
-              return eventsByIdRef.current.get(Number(eventId));
-            })
-            .filter(Boolean) as EventDTO[];
-
-          setEventsAtLocation(events);
-          setLocationEventsOpen(true);
-        });
-      });
+      const clusterId = Number(clusterFeature.properties?.cluster_id);
+      if (Number.isNaN(clusterId)) return;
+      const coords = (clusterFeature.geometry as GeoJSON.Point).coordinates as [number, number];
+      handleClusterClick(map, clusterId, coords);
     });
 
     map.on("mouseenter", "events-hitbox", () => {
@@ -575,13 +627,15 @@ export default function MapPage() {
       map.getCanvas().style.cursor = "";
     });
 
-    map.on("mouseenter", "event-clusters", () => {
-      map.getCanvas().style.cursor = "pointer";
+    // Redraw HTML donut markers whenever the cluster source finishes loading
+    // (new fetch, viewport change, zoom).
+    map.on("sourcedata", (e) => {
+      if (e.sourceId !== "events-source" || !e.isSourceLoaded) return;
+      renderClusterDonuts(map);
     });
 
-    map.on("mouseleave", "event-clusters", () => {
-      map.getCanvas().style.cursor = "";
-    });
+    // Re-reconcile donuts on moveend in case sourcedata didn't fire (no data change).
+    map.on("moveend", () => renderClusterDonuts(map));
   };
 
 
@@ -945,11 +999,21 @@ export default function MapPage() {
         const c = map.getCenter();
         mapCenterRef.current = [c.lng, c.lat];
         setSelectedLocation([c.lng, c.lat]);
+        // Any pan/zoom invalidates the spider: cluster ids may shift and
+        // leaves would no longer point at their cluster's actual centroid.
+        clearSpider();
         fetchAndDisplayEvents(map, [c.lng, c.lat], activeCategories);
       });
 
       // Click on empty map collapses any open map.
-      map.on("click", () => {
+      map.on("click", (e) => {
+        // Only treat as "empty canvas" if no event/cluster layer caught it.
+        const hits = map.queryRenderedFeatures(e.point, {
+          layers: ["events-hitbox", "event-clusters"],
+        });
+        if (hits.length === 0) {
+          clearSpider();
+        }
         if (chatEventRef.current) handleCloseChat();
       });
     };
@@ -990,6 +1054,11 @@ export default function MapPage() {
         cancelAnimationFrame(pulseAnimationRef.current);
         pulseAnimationRef.current = null;
       }
+      clusterMarkersRef.current.forEach((m) => m.remove());
+      clusterMarkersRef.current.clear();
+      spiderMarkersRef.current.forEach((m) => m.remove());
+      spiderMarkersRef.current = [];
+      spiderClusterIdRef.current = null;
       mapInstanceRef.current?.remove();
       mapInstanceRef.current = null;
     };
