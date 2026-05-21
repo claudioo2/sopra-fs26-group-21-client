@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Supercluster from "supercluster";
-import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Modal, Select, Rate } from "antd";
-import { LockOutlined, GlobalOutlined, PlusOutlined, CompassOutlined, UserOutlined, KeyOutlined } from "@ant-design/icons";
+import { App, Button, ConfigProvider, Form, Input, DatePicker, TimePicker, Segmented, Select, Rate } from "antd";
+import { LockOutlined, GlobalOutlined, PlusOutlined, CompassOutlined, UserOutlined } from "@ant-design/icons";
 import type { Dayjs } from "dayjs";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
@@ -213,10 +213,8 @@ export default function MapPage() {
   const apiService = useApi();
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
   const spiderMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const spiderClusterIdRef = useRef<number | null>(null);
-  const superclusterRef = useRef<Supercluster<EventFeatureProps> | null>(null);
   const clusterMarkersRef = useRef<Map<number, mapboxgl.Marker>>(new Map());
   const mapCenterRef = useRef<[number, number]>(DEFAULT_CENTER);
   const stompClientRef = useRef<Client | null>(null);
@@ -1313,7 +1311,11 @@ export default function MapPage() {
         `/events/${selectedEvent.id}/participants/${userId}`,
         { Authorization: `Bearer ${token}` }
       );
-      setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 , participants: (selectedEvent.participants ?? []).filter(participant => participant.id !== Number(userId)), participantIds: (selectedEvent.participantIds ?? []).filter(id => Number(id) !== Number(userId)) });
+
+      if (selectedEvent.isPrivate) {
+        setSelectedEvent(null); // close event details only for private events
+      } else {
+        setSelectedEvent({ ...selectedEvent, isParticipant: false , participantCount: (selectedEvent.participantCount ?? 1) - 1 , participants: (selectedEvent.participants ?? []).filter(participant => participant.id !== Number(userId)), participantIds: (selectedEvent.participantIds ?? []).filter(id => Number(id) !== Number(userId)) });}
       setParticipantUsers((prev) => prev.filter((u) => Number(u.id) !== Number(userId)));
       console.log("Left event:", selectedEvent);
       messageApi.success("You left the event.");

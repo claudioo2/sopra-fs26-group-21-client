@@ -1,11 +1,19 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useApi } from "@/hooks/useApi";
 import { ArrowRightOutlined } from "@ant-design/icons";
 
 export default function HomePage() {
   const router = useRouter();
+  const apiService = useApi();
+
+  useEffect(() => {
+    apiService.get("/ping").catch(() => {
+      // ignore errors; only used to wake up backend
+    });
+  }, [apiService]);
 
   return (
     <main
