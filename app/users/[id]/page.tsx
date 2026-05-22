@@ -639,10 +639,16 @@ const Profile: React.FC = () => {
                 {/* Buttons */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
                 {!isCreator && !isUserParticipant(selectedEvent) && (
-                  <button onClick={handleJoinEvent} disabled={joiningEvent} className="hover-button"
-                    style={{ width: "100%", height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-                    {joiningEvent ? "Joining…" : "Join Event"}
-                  </button>
+                  new Date(selectedEvent.endTime) < new Date() ? (
+                    <div style={{ width: "100%", padding: "12px 16px", borderRadius: 12, backgroundColor: "#23262d", border: "1.5px solid #3a3f4a", color: "#9ca3af", fontSize: 13, textAlign: "center" }}>
+                      This event has ended — joining is no longer possible.
+                    </div>
+                  ) : (
+                    <button onClick={handleJoinEvent} disabled={joiningEvent} className="hover-button"
+                      style={{ width: "100%", height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg, ${catColor}, ${catColor}bb)`, color: "#fff", fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                      {joiningEvent ? "Joining…" : "Join Event"}
+                    </button>
+                  )
                 )}
                 {(selectedEvent.isParticipant || isCreator || isUserParticipant(selectedEvent)) && (
                   <div style={{ display: "flex", gap: 8 }}>
