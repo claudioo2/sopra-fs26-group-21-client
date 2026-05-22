@@ -1,34 +1,54 @@
 # Build image
-FROM node:22.14.0 as build
+FROM node:22.14.0 AS build
+
 # Set container working directory to /app
 WORKDIR /app
+
 # Copy npm instructions
 COPY package*.json ./
-# Set npm cache to a directory the non-root user can access
+
+# Set npm cache
 RUN npm config set cache /app/.npm-cache --global
-# Install dependencies with npm ci (exact versions in the lockfile), suppressing warnings
+
+# Install dependencies using exact versions from package-lock.json
 RUN npm ci --loglevel=error
-# Copy app (useless stuff is ignored by .dockerignore)
+
+# Copy app source code
 COPY . .
-# Build the app
+
+# Build the Next.js app
 RUN npm run build
-# Delete all non-production dependencies to make copy in line 28 more efficient
+
+# Delete non-production dependencies
 RUN npm prune --production
+
 
 # Use small production image
 FROM node:22.14.0-alpine
-# Set the env to "production"
-ENV NODE_ENV production
-# Set npm cache to a directory the non-root user can access
-RUN npm config set cache /app/.npm-cache --global
-# Get non-root user
-USER 3301
-# Set container working directory to /app
+
+# Set production environment
+ENV NODE_ENV=production
+
+# Set container working directory
 WORKDIR /app
-# Copy node modules and app
-COPY --chown=node:node --from=build /app/node_modules /app/node_modules
-COPY --chown=node:node --from=build /app/build build
-# Expose port for serve
+
+# Set npm cache
+RUN npm config set cache /app/.npm-cache --global
+
+# Copy required files from build stage
+COPY --from=build /app/package*.json ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/.next ./.next
+COPY --from=build /app/public ./public
+
+# Copy Next.js config if it exists
+COPY --from=build /app/next.config.* ./
+
+# Use non-root user
+USER 3301
+
+# Expose Next.js port
 EXPOSE 3000
-# Start app
-CMD [ "npx", "serve", "-s", "build" ]
+
+# Start Next.js production server
+CMD ["npm", "start"]
