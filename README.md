@@ -1,10 +1,10 @@
-# SoPra FS26 – Group 21 · Frontend
+# 📌Sponatneo - SoPra FS26 Group 21 · Frontend
 
 ## Introduction
 
-Group 21 is building a **location-based event discovery app**: users open a map, see what's happening nearby right now, and join — public events with one click, private ones with an 8-character invite code shared by the organizer. Each event has its own chat (real-time STOMP/SockJS) and a shared "board" where participants drop photos, comments, and emoji. After it ends, attendees rate the organizer.
+Spontaneo is a **location-based event discovery app** that allows users to open a map, instantly see what’s happening nearby, and join events in real time. Public events can be joined with a single click, while private events require an 8-character invite code shared by the organizer. Each event includes a real-time chat powered by STOMP/SockJS and a collaborative board where participants can share photos, comments, and emoji reactions. After an event ends, attendees can rate the organizer.
 
-The motivation is to bridge the gap between social-network "events" (which assume you already know the host) and event-listing platforms (which feel impersonal): everything is anchored to a map, surfaced by proximity, and tied to a lightweight follow graph so you can also filter to events your friends are joining.
+The platform aims to bridge the gap between traditional social-network events — which usually assume users already know the host — and impersonal event-listing platforms. By centering everything around a live map, proximity-based discovery, and a lightweight social graph, Spontaneo makes discovering and joining spontaneous local activities feel more natural and social.
 
 This repository contains the **Next.js / TypeScript frontend** deployed on **Vercel**. The Spring Boot backend lives in [`sopra-fs26-group-21-server`](https://github.com/claudioo2/sopra-fs26-group-21-server).
 
@@ -23,7 +23,9 @@ This repository contains the **Next.js / TypeScript frontend** deployed on **Ver
 
 ## High-level components
 
-1. **[`app/map/page.tsx`](./app/map/page.tsx) — The Map.** The central screen of the app. Initialises a Mapbox map, fetches `/events?lat&lng&radius=20` on every `moveend`, renders donut-shaped cluster markers (petals proportional to category count), supports spiderfy expansion for tightly-packed events, and hosts the create-event panel + event-detail modal. Filter state (categories, friends-only, my-events, past-events) is persisted in `sessionStorage`.
+1. **[`app/map/page.tsx`](./app/map/page.tsx) — The Map.** The map is the central component of the application and the main entry point for discovering events. It initializes a Mapbox map and fetches nearby events from `/events?lat&lng&radius=20` whenever the user moves across the map (`moveend`). To keep the interface clear in crowded areas, events are grouped into donut-shaped cluster markers, with spiderfy expansion for closely packed events. <br>
+The map also hosts the create-event panel and event-detail modal, making it the primary interaction hub of the platform. User preferences such as category filters, friends-only events, my-events, and past-events are persisted in `sessionStorage` to provide a consistent and personalized experience. <br>
+This component is essential because it combines event discovery, interaction, and social context into one intuitive real-time interface.
 
 2. **[`app/api/apiService.ts`](./app/api/apiService.ts) — REST client.** Thin singleton around `fetch` that switches between `http://localhost:8080` (dev) and the App Engine URL (prod) via [`app/utils/domain.ts`](./app/utils/domain.ts). Used by every page through the [`useApi`](./app/hooks/useApi.tsx) hook. Auth tokens are passed as `Authorization: Bearer <token>` (read from `localStorage` via [`useLocalStorage`](./app/hooks/useLocalStorage.tsx)).
 
@@ -31,7 +33,7 @@ This repository contains the **Next.js / TypeScript frontend** deployed on **Ver
 
 4. **[`app/users/[id]/page.tsx`](./app/users/[id]/page.tsx) — Profile.** Combines user info, the follow / unfollow toggle, the View Following / View Followers modals, the join-by-invite-code form, and the upcoming-events list (with a red "Cancelled" badge for soft-deleted events still in their 24 h chat grace period). On the owner's own profile it also edits `username`, `email`, `password`, and `bio`.
 
-5. **[`app/events/[id]/board/page.tsx`](./app/events/[id]/board/page.tsx) — Event Board.** Per-event timeline of `PHOTO` / `COMMENT` / `EMOJI` posts (photo uploads restricted to JPEG/PNG). Only event participants can view or post.
+5. **[`app/events/[id]/board/page.tsx`](./app/events/[id]/board/page.tsx) — Event Board.** A per-event real-time feed that supports three types of posts: `PHOTO`, `COMMENT`, and `EMOJI`. Image uploads are restricted to JPEG/PNG for consistency and performance. Only authenticated event participants can view and contribute to the board, while non-participants can onyl view.
 
 The Map talks to the REST client to fetch events, the REST client hits the backend, and the STOMP client takes over for real-time messaging once a chat is opened. Profile and Board are entered from the Map (event detail modal) or from the user table at `/users`.
 
@@ -89,17 +91,6 @@ Every command is also available via Deno (`deno task dev`, etc.).
 
 The client has **no automated test suite** at this time — testing is done by running the dev server and exercising the UI. End-to-end tests are on the roadmap below.
 
-### Docker (optional)
-
-Push to `main` automatically builds and pushes a Docker image to Docker Hub via GitHub Actions. To run it locally:
-
-```bash
-docker pull <dockerhub_username>/<dockerhub_repo_name>
-docker run -p 3000:3000 <dockerhub_username>/<dockerhub_repo_name>
-```
-
-One-time setup (one team member): create a Docker Hub account whose username contains the group number (e.g. `sopra_group_21`), create a matching Docker Hub repository, and add the GitHub secrets `dockerhub_username`, `dockerhub_password` (a Docker Hub access token with read/write), and `dockerhub_repo_name`.
-
 ### Releases
 
 Push to `main` → GitHub Actions runs [`.github/workflows/verceldeployment.yml`](./.github/workflows/verceldeployment.yml), which deploys the build to Vercel. There is no separate tagging step; the `main` branch is the production line.
@@ -124,7 +115,7 @@ The client has four main user flows. They are entered after the initial login / 
     Login page
 </div>
 
-### 1. Map exploration → join an event
+### 1. 🗺️ Map exploration → join an event
 
 ```
 /login  →  /map
@@ -152,7 +143,7 @@ You can select the pins to view the events. Depending on your role as creator, p
     If you are looking for an event to partcipate then you can join through the "Join Event" button
 </div>
 
-### 2. Create an event
+### 2. 📅 Create an event
 
 ```
 /map  →  right-side "Create event" panel
@@ -172,7 +163,7 @@ The creator is auto-added as the first participant, and the server generates a u
     To create an event, set the position of the event and fill out the creation form
 </div>
 
-### 3. Real-time chat
+### 3. 💬 Real-time chat
 
 ```
 event modal  →  "Open chat"
@@ -191,7 +182,7 @@ The chat survives a soft-delete: when the organizer cancels an event the row is 
     Chat with other participants in real-time
 </div>
 
-### 4. Profile, follow, rate
+### 4. 👤 Profile, follow, rate
 
 ```
 /users/[id]
@@ -229,8 +220,8 @@ The top features new contributors could pick up next:
 
 1. **End-to-end test suite (Playwright).** The client currently has no automated tests. A Playwright suite covering the four flows above (login → map, create-event, chat round-trip, rate-after-end) would dramatically improve regression safety.
 2. **In-app cancellation notifications.** The backend already broadcasts `/topic/events/{eventId}/cancelled` when an organizer deletes an event, but the client does not subscribe yet — it only sees the cancellation on the next `moveend` fetch. Subscribing on the map (and on the profile page) would give participants an instant toast + automatic UI refresh.
-3. **Search / autocomplete on the map.** Today users navigate by panning; an address search box that pans the map to a given location (re-using the existing Mapbox Geocoding call from the create-event panel) would make discovery much faster.
-4. **Filter for Dates** Currently, users cannot filter for events happening on a specific date and time, for example next Sunday at 6:00 PM. It might be a good idea to add such a filter option, since users who actively use the app would likely find it very helpful. If they know they are available at a certain time, they could quickly get an overview of all events they could join during that time slot.
+3. **Search / autocomplete on the map.** Today users navigate by panning; an address search box that pans the map to a given location (re-using the existing Mapbox Geocoding call from the create-event panel) would make discovery much faster. <br>
+Currently users cannot filter for events happening on a specific date and time, for example next Sunday at 6:00 PM. It might be a good idea to add such a filter option, since users who actively use the app would likely find it very helpful. If they know they are available at a certain time, they could quickly get an overview of all events they could join during that time slot.
 
 ---
 
