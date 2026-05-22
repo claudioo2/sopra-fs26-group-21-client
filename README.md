@@ -241,7 +241,7 @@ Many thanks to the SoPra teaching team and our TA for guidance throughout the se
 
 ## License
 
-Licensed under the **Apache License 2.0** — see the [`LICENSE`](../sopra-fs26-group-21-server/LICENSE) file in the server repository for the full text.
+Licensed under the **Apache License 2.0** — see the [`LICENSE`](../sopra-fs26-group-21-client/LICENSE) file in the server repository for the full text.
 
 ---
 
