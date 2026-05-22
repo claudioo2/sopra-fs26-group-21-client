@@ -230,6 +230,7 @@ The top features new contributors could pick up next:
 1. **End-to-end test suite (Playwright).** The client currently has no automated tests. A Playwright suite covering the four flows above (login → map, create-event, chat round-trip, rate-after-end) would dramatically improve regression safety.
 2. **In-app cancellation notifications.** The backend already broadcasts `/topic/events/{eventId}/cancelled` when an organizer deletes an event, but the client does not subscribe yet — it only sees the cancellation on the next `moveend` fetch. Subscribing on the map (and on the profile page) would give participants an instant toast + automatic UI refresh.
 3. **Search / autocomplete on the map.** Today users navigate by panning; an address search box that pans the map to a given location (re-using the existing Mapbox Geocoding call from the create-event panel) would make discovery much faster.
+4. **Filter for Dates** Currently, users cannot filter for events happening on a specific date and time, for example next Sunday at 6:00 PM. It might be a good idea to add such a filter option, since users who actively use the app would likely find it very helpful. If they know they are available at a certain time, they could quickly get an overview of all events they could join during that time slot.
 
 ---
 
